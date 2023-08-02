@@ -2,7 +2,11 @@ package activity
 
 import (
 	"context"
+	"log/slog"
+	"reflect"
 	"time"
+
+	"go.olapie.com/ola/ids"
 
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/session"
@@ -59,4 +63,35 @@ func GetName(ctx context.Context) string {
 		return ""
 	}
 	return a.Name
+}
+
+func SetUserID[T ids.UserIDTypes](ctx context.Context, id T) error {
+	a := FromContext(ctx)
+	if a == nil {
+		return ErrNotExist
+	}
+	a.UserID = ids.NewUserID(id)
+	return nil
+}
+
+func GetUserID[T ids.UserIDTypes](ctx context.Context) T {
+	var id T
+	a := FromContext(ctx)
+	if a == nil {
+		slog.Warn("no activity")
+		return id
+	}
+
+	v := a.UserID.Value()
+	if id, ok := a.UserID.Value().(T); ok {
+		return id
+	}
+
+	t := reflect.TypeOf(v)
+	idType := reflect.TypeOf(id)
+	if t.ConvertibleTo(reflect.TypeOf(id)) {
+		id, _ = reflect.ValueOf(v).Convert(idType).Interface().(T)
+	}
+
+	return id
 }
