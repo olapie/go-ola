@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.olapie.com/logs"
-	"go.olapie.com/ola/ids"
+	"go.olapie.com/ola/types"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 type Session struct {
 	id      string
 	storage Storage
-	userID  ids.UserID
+	userID  types.UserID
 }
 
 func NewSession(id string, storage Storage) *Session {
@@ -40,11 +40,11 @@ func (s *Session) ID() string {
 	return s.id
 }
 
-func (s *Session) UserID() ids.UserID {
+func (s *Session) UserID() types.UserID {
 	return s.userID
 }
 
-func (s *Session) SetUserID(ctx context.Context, userID ids.UserID) error {
+func (s *Session) SetUserID(ctx context.Context, userID types.UserID) error {
 	if userID == nil {
 		s.userID = nil
 		return s.storage.Set(ctx, s.id, keyUserID, "")
@@ -114,11 +114,11 @@ func (s *Session) GetBytes(ctx context.Context, name string) ([]byte, error) {
 	return []byte(str), nil
 }
 
-func SetUserID[T ids.UserIDTypes](ctx context.Context, s *Session, userID T) error {
-	return s.SetUserID(ctx, ids.NewUserID(userID))
+func SetUserID[T types.UserIDTypes](ctx context.Context, s *Session, userID T) error {
+	return s.SetUserID(ctx, types.NewUserID(userID))
 }
 
-func GetUserID[T ids.UserIDTypes](ctx context.Context, s *Session) T {
+func GetUserID[T types.UserIDTypes](ctx context.Context, s *Session) T {
 	var uid T
 	v, ok := s.userID.(T)
 	if ok {

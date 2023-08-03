@@ -6,10 +6,9 @@ import (
 	"reflect"
 	"time"
 
-	"go.olapie.com/ola/ids"
-
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/session"
+	"go.olapie.com/ola/types"
 )
 
 type contextKey int
@@ -65,16 +64,16 @@ func GetName(ctx context.Context) string {
 	return a.Name
 }
 
-func SetUserID[T ids.UserIDTypes](ctx context.Context, id T) error {
+func SetUserID[T types.UserIDTypes](ctx context.Context, id T) error {
 	a := FromContext(ctx)
 	if a == nil {
 		return ErrNotExist
 	}
-	a.UserID = ids.NewUserID(id)
+	a.UserID = types.NewUserID(id)
 	return nil
 }
 
-func GetUserID[T ids.UserIDTypes](ctx context.Context) T {
+func GetUserID[T types.UserIDTypes](ctx context.Context) T {
 	var id T
 	a := FromContext(ctx)
 	if a == nil {
