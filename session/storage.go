@@ -59,7 +59,7 @@ func (l *LocalStorage) Get(ctx context.Context, sid, name string) (string, error
 
 func (l *LocalStorage) Increase(ctx context.Context, sid, name string, incr int64) (int64, error) {
 	e := l.getOrCreate(ctx, sid)
-	for {
+	for nRetry := 0; nRetry < 10; nRetry++ {
 		old, ok := e.m.Load(name)
 		var i int64
 		if ok {
@@ -75,7 +75,12 @@ func (l *LocalStorage) Increase(ctx context.Context, sid, name string, incr int6
 		if e.m.CompareAndSwap(name, old, newValue) {
 			return i, nil
 		}
+
+		if nRetry > 5 {
+			time.Sleep(time.Millisecond * 50)
+		}
 	}
+	return 0, ErrTooManyConflicts
 }
 
 func (l *LocalStorage) SetTTL(ctx context.Context, sid string, ttl time.Duration) error {

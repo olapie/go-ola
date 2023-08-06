@@ -9,5 +9,5 @@ func (e errorString) Error() string {
 const (
 	ErrNotExist         errorString = "session does not exist"
 	ErrNoValue          errorString = "no value"
-	ErrTooManyConflicts errorString = "too many conflict"
+	ErrTooManyConflicts errorString = "too many conflicts"
 )
