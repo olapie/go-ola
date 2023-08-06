@@ -1,6 +1,6 @@
 module create-http-handler
 
-go 1.20
+go 1.21
 
 require go.olapie.com/utils v0.1.13
 
