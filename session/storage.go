@@ -45,7 +45,7 @@ func (l *LocalStorage) Set(ctx context.Context, sid, name string, value string) 
 func (l *LocalStorage) Get(ctx context.Context, sid, name string) (string, error) {
 	e, ok := l.m.Load(sid)
 	if !ok {
-		return "", ErrNotExist
+		return "", ErrNoValue
 	}
 	v, ok := e.(*entry).m.Load(name)
 	if !ok {
@@ -84,11 +84,7 @@ func (l *LocalStorage) Increase(ctx context.Context, sid, name string, incr int6
 }
 
 func (l *LocalStorage) SetTTL(ctx context.Context, sid string, ttl time.Duration) error {
-	e, ok := l.m.Load(sid)
-	if !ok {
-		return ErrNotExist
-	}
-	e.(*entry).expiresAt = time.Now().Add(ttl)
+	l.getOrCreate(ctx, sid).expiresAt = time.Now().Add(ttl)
 	return nil
 }
 

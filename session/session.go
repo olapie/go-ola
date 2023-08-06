@@ -2,10 +2,12 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"go.olapie.com/logs"
@@ -14,8 +16,8 @@ import (
 
 const (
 	keyUserID     = "$uid"
-	keyStartTime  = "$start_time"
-	keyActiveTime = "$active_time"
+	keyStartTime  = "$st"
+	keyActiveTime = "$at"
 )
 
 type Session struct {
@@ -112,6 +114,28 @@ func (s *Session) GetBytes(ctx context.Context, name string) ([]byte, error) {
 		return nil, err
 	}
 	return []byte(str), nil
+}
+
+func (s *Session) Start(ctx context.Context) error {
+	_, err := s.GetInt64(ctx, keyStartTime)
+	if err != nil {
+		if !errors.Is(err, ErrNoValue) {
+			return fmt.Errorf("failed to get %s: %w", keyStartTime, err)
+		}
+		err = s.SetInt64(ctx, keyStartTime, time.Now().Unix())
+		if err != nil {
+			return fmt.Errorf("failed to save %s: %w", keyStartTime, err)
+		}
+	}
+	err = s.SetInt64(ctx, keyActiveTime, time.Now().Unix())
+	if err != nil {
+		return fmt.Errorf("failed to save %s: %w", keyActiveTime, err)
+	}
+	return nil
+}
+
+func (s *Session) Destroy(ctx context.Context) error {
+	return s.storage.Destroy(ctx, s.id)
 }
 
 func SetUserID[T types.UserIDTypes](ctx context.Context, s *Session, userID T) error {
