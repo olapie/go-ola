@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"go.olapie.com/logs"
+	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/errorutil"
 	"go.olapie.com/security/base62"
-	"go.olapie.com/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -23,22 +24,26 @@ import (
 var statusErrorType = reflect.TypeOf(status.Error(codes.Unknown, ""))
 
 func ServerStart(ctx context.Context, info *grpc.UnaryServerInfo) (context.Context, error) {
+	a := &activity.Activity{
+		StartTime: time.Now(),
+	}
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "failed reading request metadata")
 	}
+	a.GRPCMetadata = md
 
 	if !VerifyAPIKey(md, 10) {
 		logs.FromCtx(ctx).Warn("invalid api key", md)
 		return nil, status.Error(codes.InvalidArgument, "failed verifying")
 	}
 
-	traceID := GetTraceID(md)
-	ctx = utils.NewRequestContextBuilder(ctx).WithAppID(GetAppID(md)).
-		WithClientID(GetClientID(md)).
-		WithTraceID(traceID).
-		Build()
-	logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
+	a.TraceID = GetTraceID(md)
+	if a.TraceID == "" {
+		a.TraceID = base62.NewUUIDString()
+	}
+	ctx = activity.NewContext(ctx, a)
+	logger := logs.FromCtx(ctx).With(slog.String("trace_id", a.TraceID))
 	fields := make([]any, 0, len(md)+1)
 	fields = append(fields, slog.String("full_method", info.FullMethod))
 	for k, v := range md {
@@ -64,7 +69,7 @@ func ServerFinish(resp any, err error, logger *slog.Logger, startAt time.Time) (
 		return nil, err
 	}
 
-	if s := utils.GetErrorCode(err); s >= 100 && s < 600 {
+	if s := errorutil.GetCode(err); s >= 100 && s < 600 {
 		code := HTTPStatusToCode(s)
 		logger.Info("failed", slog.Int("status", s), slog.Int("code", int(code)))
 		return nil, status.Error(code, err.Error())
@@ -79,8 +84,10 @@ func SignClientContext(ctx context.Context) context.Context {
 		md = make(metadata.MD)
 	}
 
+	a := activity.FromContext(ctx)
+
 	if traceID := GetTraceID(md); traceID == "" {
-		traceID = utils.GetTraceID(ctx)
+		traceID = a.TraceID
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
 		}
@@ -88,7 +95,7 @@ func SignClientContext(ctx context.Context) context.Context {
 	}
 
 	if clientID := GetClientID(md); clientID == "" {
-		clientID = utils.GetClientID(ctx)
+		clientID = GetClientID(a.GRPCMetadata)
 		if clientID != "" {
 			SetClientID(md, clientID)
 		} else {
@@ -97,7 +104,7 @@ func SignClientContext(ctx context.Context) context.Context {
 	}
 
 	if appID := GetAppID(md); appID == "" {
-		appID = utils.GetAppID(ctx)
+		appID = GetAppID(a.GRPCMetadata)
 		if appID != "" {
 			SetAppID(md, appID)
 		} else {
@@ -106,7 +113,7 @@ func SignClientContext(ctx context.Context) context.Context {
 	}
 
 	if auth := GetAuthorization(md); auth == "" {
-		auth = utils.GetAuthorization(ctx)
+		auth = GetAuthorization(a.GRPCMetadata)
 		if auth != "" {
 			SetAuthorization(md, auth)
 		} else {

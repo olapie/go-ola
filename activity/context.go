@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go.olapie.com/logs"
-	"go.olapie.com/ola/session"
 	"go.olapie.com/ola/types"
 )
 
@@ -16,7 +15,7 @@ type contextKey int
 const contextKeyActivity contextKey = iota
 
 func NewContext(ctx context.Context, a *Activity) context.Context {
-	if FromContext(ctx) != nil {
+	if v, _ := ctx.Value(contextKeyActivity).(*Activity); v != nil {
 		logs.FromCtx(ctx).Warn("skipped new context with activity as it already exists")
 		return ctx
 	}
@@ -24,44 +23,13 @@ func NewContext(ctx context.Context, a *Activity) context.Context {
 }
 
 func FromContext(ctx context.Context) *Activity {
-	s, _ := ctx.Value(contextKeyActivity).(*Activity)
-	return s
-}
-
-func GetSession(ctx context.Context) *session.Session {
-	a := FromContext(ctx)
-	if a == nil {
-		logs.FromCtx(ctx).Warn("no activity")
-		return nil
+	v := ctx.Value(contextKeyActivity)
+	if v == nil {
+		return &Activity{
+			StartTime: time.Now(),
+		}
 	}
-	return a.Session
-}
-
-func GetTraceID(ctx context.Context) string {
-	a := FromContext(ctx)
-	if a == nil {
-		logs.FromCtx(ctx).Warn("no activity")
-		return ""
-	}
-	return a.TraceID
-}
-
-func GetStartTime(ctx context.Context) time.Time {
-	a := FromContext(ctx)
-	if a == nil {
-		logs.FromCtx(ctx).Warn("no activity")
-		return time.Time{}
-	}
-	return a.StartTime
-}
-
-func GetName(ctx context.Context) string {
-	a := FromContext(ctx)
-	if a == nil {
-		logs.FromCtx(ctx).Warn("no activity")
-		return ""
-	}
-	return a.Name
+	return ctx.Value(contextKeyActivity).(*Activity)
 }
 
 func SetUserID[T types.UserIDTypes](ctx context.Context, id T) error {

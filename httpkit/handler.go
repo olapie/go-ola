@@ -2,13 +2,13 @@ package httpkit
 
 import (
 	"context"
-	"go.olapie.com/ola/activity"
-	"go.olapie.com/ola/errorutil"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"go.olapie.com/logs"
+	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/errorutil"
 	"go.olapie.com/ola/types"
 	"go.olapie.com/security/base62"
 )
@@ -53,10 +53,8 @@ type Authenticator[T types.UserIDTypes] interface {
 
 func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Duration, authenticator Authenticator[T]) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		a := &activity.Activity{
-			StartTime:   time.Now(),
-			HTTPRequest: req,
-		}
+		a := activity.FromContext(req.Context())
+		a.HTTPHeader = req.Header
 		a.TraceID = GetTraceID(req.Header)
 		if a.TraceID == "" {
 			a.TraceID = base62.NewUUIDString()

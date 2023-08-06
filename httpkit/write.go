@@ -2,13 +2,12 @@ package httpkit
 
 import (
 	"encoding/json"
+	"go.olapie.com/ola/errorutil"
 	"io"
 	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
-
-	"go.olapie.com/utils"
 )
 
 func BasicAuthenticate(w http.ResponseWriter, realm string) {
@@ -24,7 +23,7 @@ func Error(w http.ResponseWriter, err error) {
 	}
 
 	status := http.StatusInternalServerError
-	if s := utils.GetErrorCode(err); s != 0 {
+	if s := errorutil.GetCode(err); s != 0 {
 		status = s
 	}
 
