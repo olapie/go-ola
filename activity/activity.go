@@ -1,6 +1,7 @@
 package activity
 
 import (
+	"net/http"
 	"time"
 
 	"go.olapie.com/ola/session"
@@ -8,10 +9,10 @@ import (
 )
 
 type Activity struct {
-	Name      string
-	TraceID   string
-	UserID    types.UserID
-	Session   *session.Session
-	StartTime time.Time
-	Request   any
+	Name        string
+	TraceID     string
+	UserID      types.UserID
+	Session     *session.Session
+	StartTime   time.Time
+	HTTPRequest *http.Request
 }
