@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"go.olapie.com/logs"
@@ -196,5 +197,15 @@ func HTTPStatusToCode(s int) codes.Code {
 		return codes.Unavailable
 	default:
 		return codes.Unknown
+	}
+}
+
+func MatchMetadata(key string) (string, bool) {
+	key = strings.ToLower(key)
+	switch key {
+	case headers.KeyClientID, headers.KeyAppID, headers.KeyTraceID, headers.KeyAPIKey:
+		return key, true
+	default:
+		return "", false
 	}
 }
