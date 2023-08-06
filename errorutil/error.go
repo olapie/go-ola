@@ -2,10 +2,11 @@ package errorutil
 
 import (
 	"fmt"
-	"go.olapie.com/ola/internal/types"
-	"go.olapie.com/utils"
 	"net/http"
 	"reflect"
+
+	"go.olapie.com/ola/internal/types"
+	"go.olapie.com/utils"
 )
 
 func NewError(code int, format string, a ...any) error {

@@ -3,9 +3,10 @@ package httpkit
 import (
 	"context"
 	"fmt"
-	"go.olapie.com/ola/errorutil"
 	"io"
 	"net/http"
+
+	"go.olapie.com/ola/errorutil"
 )
 
 func DoWithResponse(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {

@@ -4,53 +4,50 @@ import (
 	"context"
 	"log/slog"
 	"reflect"
-	"time"
 
-	"go.olapie.com/logs"
 	"go.olapie.com/ola/types"
 )
 
-type contextKey int
+type activityIncomingContext struct{}
+type activityOutgoingContext struct{}
 
-const contextKeyActivity contextKey = iota
-
-func NewContext(ctx context.Context, a *Activity) context.Context {
-	if v, _ := ctx.Value(contextKeyActivity).(*Activity); v != nil {
-		logs.FromCtx(ctx).Warn("skipped new context with activity as it already exists")
-		return ctx
-	}
-	return context.WithValue(ctx, contextKeyActivity, a)
+func FromIncomingContext(ctx context.Context) Activity {
+	a, _ := ctx.Value(activityIncomingContext{}).(Activity)
+	return a
 }
 
-func FromContext(ctx context.Context) *Activity {
-	v := ctx.Value(contextKeyActivity)
-	if v == nil {
-		return &Activity{
-			StartTime: time.Now(),
-		}
-	}
-	return ctx.Value(contextKeyActivity).(*Activity)
+func FromOutgoingContext(ctx context.Context) Activity {
+	a, _ := ctx.Value(activityOutgoingContext{}).(Activity)
+	return a
 }
 
-func SetUserID[T types.UserIDTypes](ctx context.Context, id T) error {
-	a := FromContext(ctx)
+func NewIncomingContext(ctx context.Context, a Activity) context.Context {
+	return context.WithValue(ctx, activityIncomingContext{}, a)
+}
+
+func NewOutgoingContext(ctx context.Context, a Activity) context.Context {
+	return context.WithValue(ctx, activityOutgoingContext{}, a)
+}
+
+func SetIncomingUserID[T types.UserIDTypes](ctx context.Context, id T) error {
+	a := FromIncomingContext(ctx)
 	if a == nil {
 		return ErrNotExist
 	}
-	a.UserID = types.NewUserID(id)
+	a.SetUserID(types.NewUserID(id))
 	return nil
 }
 
-func GetUserID[T types.UserIDTypes](ctx context.Context) T {
+func GetIncomingUserID[T types.UserIDTypes](ctx context.Context) T {
 	var id T
-	a := FromContext(ctx)
+	a := FromIncomingContext(ctx)
 	if a == nil {
 		slog.Warn("no activity")
 		return id
 	}
 
-	v := a.UserID.Value()
-	if id, ok := a.UserID.Value().(T); ok {
+	v := a.UserID().Value()
+	if id, ok := a.UserID().Value().(T); ok {
 		return id
 	}
 

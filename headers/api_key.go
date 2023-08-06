@@ -1,32 +1,30 @@
-package grpcutil
+package headers
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log/slog"
-	"time"
-
 	"go.olapie.com/security"
 	"go.olapie.com/security/base62"
-	"google.golang.org/grpc/metadata"
+	"log/slog"
+	"time"
 )
 
-func SetAPIKey(md metadata.MD) {
+func SetAPIKey[T ~map[string][]string](h T) {
 	t := time.Now().Unix()
 	var b [41]byte
 	b[0] = 1
 	binary.BigEndian.PutUint64(b[1:], uint64(t))
-	clientID := GetClientID(md)
-	traceID := GetTraceID(md)
+	clientID := Get(h, KeyClientID)
+	traceID := Get(h, KeyTraceID)
 	hash := security.Hash32(fmt.Sprint(t) + traceID + clientID)
 	copy(b[9:], hash[:])
 	sign := base62.EncodeToString(b[:])
-	md.Set(KeyAPIKey, sign)
+	h[KeyAPIKey] = []string{sign}
 }
 
-func VerifyAPIKey(md metadata.MD, delaySeconds int) bool {
-	sign := GetMetadata(md, KeyAPIKey)
+func VerifyAPIKey[T ~map[string][]string](h T, delaySeconds int) bool {
+	sign := Get(h, KeyAPIKey)
 	if sign == "" {
 		slog.Warn("missing " + KeyAPIKey)
 		return false
@@ -43,8 +41,8 @@ func VerifyAPIKey(md metadata.MD, delaySeconds int) bool {
 		slog.Error("invalid timestamp", "value", t)
 		return false
 	}
-	clientID := GetClientID(md)
-	traceID := GetTraceID(md)
+	clientID := Get(h, KeyClientID)
+	traceID := Get(h, KeyTraceID)
 	hash := security.Hash32(fmt.Sprint(t) + traceID + clientID)
 	return bytes.Equal(b[9:], hash[:])
 }

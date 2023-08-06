@@ -1,11 +1,10 @@
-package httpkit
+package headers
 
 import (
-	"net/http"
-	"testing"
-
 	"go.olapie.com/security/base62"
 	"go.olapie.com/utils"
+	"net/http"
+	"testing"
 )
 
 func TestSetAPIKey(t *testing.T) {

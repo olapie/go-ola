@@ -11,6 +11,7 @@ import (
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/errorutil"
+	"go.olapie.com/ola/headers"
 	"go.olapie.com/security/base62"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -24,26 +25,24 @@ import (
 var statusErrorType = reflect.TypeOf(status.Error(codes.Unknown, ""))
 
 func ServerStart(ctx context.Context, info *grpc.UnaryServerInfo) (context.Context, error) {
-	a := &activity.Activity{
-		StartTime: time.Now(),
-	}
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "failed reading request metadata")
 	}
-	a.GRPCMetadata = md
 
-	if !VerifyAPIKey(md, 10) {
+	if !headers.VerifyAPIKey(md, 10) {
 		logs.FromCtx(ctx).Warn("invalid api key", md)
 		return nil, status.Error(codes.InvalidArgument, "failed verifying")
 	}
 
-	a.TraceID = GetTraceID(md)
-	if a.TraceID == "" {
-		a.TraceID = base62.NewUUIDString()
+	a := activity.New(info.FullMethod, md)
+	traceID := a.Get(headers.KeyTraceID)
+	if traceID == "" {
+		traceID = base62.NewUUIDString()
+		a.Set(headers.KeyTraceID, traceID)
 	}
-	ctx = activity.NewContext(ctx, a)
-	logger := logs.FromCtx(ctx).With(slog.String("trace_id", a.TraceID))
+	ctx = activity.NewIncomingContext(ctx, a)
+	logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
 	fields := make([]any, 0, len(md)+1)
 	fields = append(fields, slog.String("full_method", info.FullMethod))
 	for k, v := range md {
@@ -84,44 +83,44 @@ func SignClientContext(ctx context.Context) context.Context {
 		md = make(metadata.MD)
 	}
 
-	a := activity.FromContext(ctx)
+	a := activity.FromOutgoingContext(ctx)
 
-	if traceID := GetTraceID(md); traceID == "" {
-		traceID = a.TraceID
+	if traceID := headers.Get(md, headers.KeyTraceID); traceID == "" {
+		traceID = a.Get(headers.KeyTraceID)
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
 		}
-		SetTraceID(md, traceID)
+		md.Set(headers.KeyTraceID, traceID)
 	}
 
-	if clientID := GetClientID(md); clientID == "" {
-		clientID = GetClientID(a.GRPCMetadata)
+	if clientID := headers.Get(md, headers.KeyClientID); clientID == "" {
+		clientID = a.Get(headers.KeyClientID)
 		if clientID != "" {
-			SetClientID(md, clientID)
+			md.Set(headers.KeyClientID, clientID)
 		} else {
 			slog.Warn("missing ClientID in context")
 		}
 	}
 
-	if appID := GetAppID(md); appID == "" {
-		appID = GetAppID(a.GRPCMetadata)
+	if appID := headers.Get(md, headers.KeyAppID); appID == "" {
+		appID = a.Get(headers.KeyAppID)
 		if appID != "" {
-			SetAppID(md, appID)
+			md.Set(headers.KeyAppID, appID)
 		} else {
-			slog.Warn("missing AppID in context")
+			slog.Warn("missing ClientID in context")
 		}
 	}
 
-	if auth := GetAuthorization(md); auth == "" {
-		auth = GetAuthorization(a.GRPCMetadata)
+	if auth := headers.Get(md, headers.KeyAuthorization); auth == "" {
+		auth = a.Get(headers.KeyAuthorization)
 		if auth != "" {
-			SetAuthorization(md, auth)
+			md.Set(headers.KeyAuthorization, auth)
 		} else {
 			slog.Warn("missing Authorization in context")
 		}
 	}
 
-	SetAPIKey(md)
+	headers.SetAPIKey(md)
 	return metadata.NewOutgoingContext(ctx, md)
 }
 

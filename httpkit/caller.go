@@ -7,7 +7,8 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"go.olapie.com/ola/errorutil"
+	"go.olapie.com/ola/headers"
+	"go.olapie.com/security/base62"
 	"io"
 	"log"
 	"net/http"
@@ -15,7 +16,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/google/uuid"
+	"go.olapie.com/ola/errorutil"
+
 	"go.olapie.com/ola/urlutil"
 	"go.olapie.com/utils"
 )
@@ -141,8 +143,8 @@ func (c *Caller[IN, OUT]) call(ctx context.Context, input IN) (*http.Response, e
 	if err != nil {
 		return nil, fmt.Errorf("create request %s %s: %w", c.Method, endpoint, err)
 	}
-	req.Header.Set(KeyContentType, contentType)
-	req.Header.Set(KeyTraceID, uuid.NewString())
+	headers.SetContentType(req.Header, contentType)
+	headers.SetTraceID(req.Header, base62.NewUUIDString())
 
 	client := http.DefaultClient
 	if c.Client != nil {
@@ -183,7 +185,7 @@ func (c *Caller[IN, OUT]) parseInput(contentType *string, endpoint *string, inpu
 	body, ok := input.(io.Reader)
 	if ok {
 		if *contentType == "" {
-			*contentType = MimeOctetStream
+			*contentType = headers.MimeOctetStream
 		}
 		return body, nil
 	}
@@ -207,7 +209,7 @@ func (c *Caller[IN, OUT]) parseInput(contentType *string, endpoint *string, inpu
 	kindOfRemain := utils.IndirectKind(remain)
 	switch kindOfRemain {
 	case reflect.Struct, reflect.Map, reflect.Slice:
-		*contentType = MimeJsonUTF8
+		*contentType = headers.MimeJsonUTF8
 		data, err := json.Marshal(input)
 		if err != nil {
 			return nil, fmt.Errorf("marshal: %w", err)
@@ -215,7 +217,7 @@ func (c *Caller[IN, OUT]) parseInput(contentType *string, endpoint *string, inpu
 		return bytes.NewBuffer(data), nil
 	default:
 		if utils.IsNumber(remain) || utils.IsString(remain) {
-			*contentType = MimePlainUTF8
+			*contentType = headers.MimePlainUTF8
 			return bytes.NewReader([]byte(fmt.Sprint(remain))), nil
 		}
 		return nil, fmt.Errorf("unsupported value type: %T", input)
@@ -263,11 +265,11 @@ type UnmarshalFunc func([]byte, any) error
 var contentTypeToUnmarshalFunc sync.Map
 
 func init() {
-	RegisterUnmarshalFunc(MimeJSON, json.Unmarshal)
-	RegisterUnmarshalFunc(MimeJsonUTF8, json.Unmarshal)
-	RegisterUnmarshalFunc(MimeXML, xml.Unmarshal)
-	RegisterUnmarshalFunc(MimeXML2, xml.Unmarshal)
-	RegisterUnmarshalFunc(MimeXmlUTF8, xml.Unmarshal)
+	RegisterUnmarshalFunc(headers.MimeJSON, json.Unmarshal)
+	RegisterUnmarshalFunc(headers.MimeJsonUTF8, json.Unmarshal)
+	RegisterUnmarshalFunc(headers.MimeXML, xml.Unmarshal)
+	RegisterUnmarshalFunc(headers.MimeXML2, xml.Unmarshal)
+	RegisterUnmarshalFunc(headers.MimeXmlUTF8, xml.Unmarshal)
 }
 
 func RegisterUnmarshalFunc(contentType string, f UnmarshalFunc) {
@@ -302,7 +304,7 @@ func GetResponseResult[T any](resp *http.Response) (T, error) {
 		return res, nil
 	}
 
-	ct := GetContentType(resp.Header)
+	ct := headers.GetContentType(resp.Header)
 	if f := GetUnmarshalFunc(ct); f != nil {
 		err = f(body, &res)
 		return res, err

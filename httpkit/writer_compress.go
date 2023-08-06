@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"go.olapie.com/ola/headers"
 	"io"
 	"log"
 	"net/http"
@@ -51,7 +52,7 @@ func newCompressedWriter(w http.ResponseWriter, encoding string) (*Compressor, e
 		cw := &Compressor{}
 		cw.ResponseWriter = w
 		cw.compressWriter = gzip.NewWriter(w)
-		SetContentEncoding(w.Header(), encoding)
+		headers.SetContentEncoding(w.Header(), encoding)
 		return cw, nil
 	case "deflate":
 		fw, err := flate.NewWriter(w, flate.DefaultCompression)
@@ -61,7 +62,7 @@ func newCompressedWriter(w http.ResponseWriter, encoding string) (*Compressor, e
 		cw := &Compressor{}
 		cw.compressWriter = fw
 		cw.ResponseWriter = w
-		SetContentEncoding(w.Header(), encoding)
+		headers.SetContentEncoding(w.Header(), encoding)
 		return cw, nil
 	default:
 		return nil, errors.New("unsupported encoding")

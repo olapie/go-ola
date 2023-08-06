@@ -2,6 +2,7 @@ package httpkit
 
 import (
 	"context"
+	"go.olapie.com/ola/headers"
 	"log/slog"
 	"net/http"
 	"time"
@@ -53,14 +54,14 @@ type Authenticator[T types.UserIDTypes] interface {
 
 func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Duration, authenticator Authenticator[T]) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		a := activity.FromContext(req.Context())
-		a.HTTPHeader = req.Header
-		a.TraceID = GetTraceID(req.Header)
-		if a.TraceID == "" {
-			a.TraceID = base62.NewUUIDString()
+		startAt := time.Now()
+		a := activity.New("", req.Header)
+		ctx := activity.NewIncomingContext(req.Context(), a)
+		traceID := a.Get(headers.KeyTraceID)
+		if traceID == "" {
+			traceID = base62.NewUUIDString()
 		}
-		ctx := activity.NewContext(req.Context(), a)
-		logger := logs.FromCtx(ctx).With(slog.String("trace_id", a.TraceID))
+		logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
 		fields := make([]any, 0, 4+len(req.Header))
 		fields = append(fields,
 			slog.String("uri", req.RequestURI),
@@ -86,7 +87,7 @@ func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Durati
 		}()
 
 		w := WrapWriter(rw)
-		if VerifyAPIKey(req.Header, 10) {
+		if headers.VerifyAPIKey(req.Header, 10) {
 			if authenticator != nil {
 				authResult, err := authenticator.Authenticate(req)
 				if err != nil {
@@ -94,7 +95,7 @@ func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Durati
 					Error(w, err)
 				} else {
 					logger.Info("auth succeeded", slog.Any("login", authResult))
-					a.UserID = types.NewUserID(authResult)
+					a.SetUserID(types.NewUserID(authResult))
 					next.ServeHTTP(w, req)
 				}
 			} else {
@@ -106,7 +107,7 @@ func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Durati
 
 		status := w.Status()
 		fields = []any{slog.Int("status", status),
-			slog.Duration("cost", time.Now().Sub(a.StartTime))}
+			slog.Duration("cost", time.Now().Sub(startAt))}
 		if status >= 400 {
 			fields = append(fields, slog.String("body", string(w.Body())))
 			logger.Info("failed", fields...)

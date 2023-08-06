@@ -1,4 +1,4 @@
-package httpkit
+package headers
 
 import (
 	"encoding/base64"
@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 )
+
+// http.Client will convert x-app-id to X-App-Id by default
 
 const (
 	KeyAuthorization       = "Authorization"
@@ -82,87 +84,22 @@ const (
 	MimeXmlUTF8  = MimeXML + charsetSuffix
 )
 
-func IsMimeText[T string | http.Header](typeOrHeader T) bool {
-	switch v := any(typeOrHeader).(type) {
-	case string:
-		switch v {
-		case MimePlain, MimeHTML, MimeCSS, MimeXML, MimeXML2, MimeXHTML, MimeJSON, MimePlainUTF8, MimeHtmlUTF8,
-			MimeJsonUTF8, MimeXmlUTF8:
-			return true
-		default:
-			return false
-		}
-	case http.Header:
-		return IsMimeText(GetContentType(v))
-	default:
-		return false
+func Get[H ~map[string][]string](h H, key string) string {
+	if l := h[key]; len(l) != 0 {
+		return l[0]
 	}
-}
 
-func IsMimeXML[T string | http.Header](typeOrHeader T) bool {
-	switch v := any(typeOrHeader).(type) {
-	case string:
-		switch v {
-		case MimeXML, MimeXML2, MimeXmlUTF8:
-			return true
-		default:
-			return false
-		}
-	case http.Header:
-		return IsMimeXML(GetContentType(v))
-	default:
-		return false
+	if l := h[strings.ToLower(key)]; len(l) != 0 {
+		return l[0]
 	}
-}
 
-func IsMimeJSON[T string | http.Header](typeOrHeader T) bool {
-	switch v := any(typeOrHeader).(type) {
-	case string:
-		switch v {
-		case MimeJSON, MimeJsonUTF8:
-			return true
-		default:
-			return false
-		}
-	case http.Header:
-		return IsMimeXML(GetContentType(v))
-	default:
-		return false
-	}
-}
-
-type HeaderTypes interface {
-	http.Header | map[string]string | map[string][]string
-}
-
-func GetHeader[H HeaderTypes](h H, key string) string {
-	switch m := any(h).(type) {
-	case map[string]string:
-		v := m[key]
-		if v == "" {
-			v = m[strings.ToLower(key)]
-		}
+	if v := http.Header(h).Get(key); v != "" {
 		return v
-	case map[string][]string:
-		return getHeader(m, key)
-	case http.Header:
-		return getHeader(m, key)
 	}
 	return ""
 }
 
-func getHeader(m map[string][]string, key string) string {
-	v, ok := m[key]
-	if !ok {
-		v = m[strings.ToLower(key)]
-	}
-	if len(v) == 0 {
-		return ""
-	}
-	return v[0]
-}
-
-func SetHeader[H HeaderTypes](h H, key, value string) {
+func Set[H ~map[string][]string](h H, key, value string) {
 	switch m := any(h).(type) {
 	case map[string]string:
 		m[key] = value
@@ -176,15 +113,15 @@ func SetHeader[H HeaderTypes](h H, key, value string) {
 	}
 }
 
-func SetHeaderNX[H HeaderTypes](h H, key, value string) {
-	if GetHeader(h, key) != "" {
+func SetNX[H ~map[string][]string](h H, key, value string) {
+	if Get(h, key) != "" {
 		return
 	}
-	SetHeader(h, key, value)
+	Set(h, key, value)
 }
 
-func GetAcceptEncodings[H HeaderTypes](h H) []string {
-	a := strings.Split(GetHeader(h, KeyAcceptEncoding), ",")
+func GetAcceptEncodings[H ~map[string][]string](h H) []string {
+	a := strings.Split(Get(h, KeyAcceptEncoding), ",")
 	for i, s := range a {
 		a[i] = strings.TrimSpace(s)
 	}
@@ -198,32 +135,32 @@ func GetAcceptEncodings[H HeaderTypes](h H) []string {
 	return a
 }
 
-func GetContentType[H HeaderTypes](h H) string {
-	t, _, _ := mime.ParseMediaType(GetHeader(h, KeyContentType))
+func GetContentType[H ~map[string][]string](h H) string {
+	t, _, _ := mime.ParseMediaType(Get(h, KeyContentType))
 	return t
 }
 
-func SetContentType(h http.Header, contentType string) {
-	h.Set(KeyContentType, contentType)
+func SetContentType[H ~map[string][]string](h H, contentType string) {
+	Set(h, KeyContentType, contentType)
 }
 
-func SetContentTypeNX(h http.Header, contentType string) {
-	SetHeaderNX(h, KeyContentType, contentType)
+func SetContentTypeNX[H ~map[string][]string](h H, contentType string) {
+	SetNX(h, KeyContentType, contentType)
 }
 
-func GetAuthorization[H HeaderTypes](h H) string {
-	return GetHeader(h, KeyAuthorization)
+func GetAuthorization[H ~map[string][]string](h H) string {
+	return Get(h, KeyAuthorization)
 }
 
-func SetAuthorization[H HeaderTypes](h H, contentType string) {
-	SetHeader(h, KeyContentType, contentType)
+func SetAuthorization[H ~map[string][]string](h H, contentType string) {
+	Set(h, KeyContentType, contentType)
 }
 
-func SetAuthorizationNX[H HeaderTypes](h H, contentType string) {
-	SetHeaderNX(h, KeyContentType, contentType)
+func SetAuthorizationNX[H ~map[string][]string](h H, contentType string) {
+	SetNX(h, KeyContentType, contentType)
 }
 
-func GetBasicAccount[H HeaderTypes](h H) (user string, password string) {
+func GetBasicAccount[H ~map[string][]string](h H) (user string, password string) {
 	s := GetAuthorization(h)
 	l := strings.Split(s, " ")
 	if len(l) != 2 {
@@ -247,7 +184,7 @@ func GetBasicAccount[H HeaderTypes](h H) (user string, password string) {
 }
 
 // GetBearer returns bearer token in header
-func GetBearer[H HeaderTypes](h H) string {
+func GetBearer[H ~map[string][]string](h H) string {
 	s := GetAuthorization(h)
 	l := strings.Split(s, " ")
 	if len(l) != 2 {
@@ -259,41 +196,41 @@ func GetBearer[H HeaderTypes](h H) string {
 	return ""
 }
 
-func SetBearer[H HeaderTypes](h H, bearer string) {
+func SetBearer[H ~map[string][]string](h H, bearer string) {
 	authorization := Bearer + " " + bearer
-	SetHeader(h, KeyAuthorization, authorization)
+	Set(h, KeyAuthorization, authorization)
 }
 
-func GetContentEncoding(h http.Header, encoding string) string {
-	return GetHeader(h, KeyContentEncoding)
+func GetContentEncoding[H ~map[string][]string](h H, encoding string) string {
+	return Get(h, KeyContentEncoding)
 }
 
-func SetContentEncoding[H HeaderTypes](h H, encoding string) {
-	SetHeader(h, KeyContentEncoding, encoding)
+func SetContentEncoding[H ~map[string][]string](h H, encoding string) {
+	Set(h, KeyContentEncoding, encoding)
 }
 
-func GetTraceID[H HeaderTypes](h H) string {
-	return GetHeader(h, KeyTraceID)
+func GetTraceID[H ~map[string][]string](h H) string {
+	return Get(h, KeyTraceID)
 }
 
-func SetTraceID[H HeaderTypes](h H, id string) {
-	SetHeader(h, KeyTraceID, id)
+func SetTraceID[H ~map[string][]string](h H, id string) {
+	Set(h, KeyTraceID, id)
 }
 
-func GetClientID[H HeaderTypes](h H) string {
-	return GetHeader(h, KeyClientID)
+func GetClientID[H ~map[string][]string](h H) string {
+	return Get(h, KeyClientID)
 }
 
-func SetClientID[H HeaderTypes](h H, id string) {
-	SetHeader(h, KeyClientID, id)
+func SetClientID[H ~map[string][]string](h H, id string) {
+	Set(h, KeyClientID, id)
 }
 
-func GetAppID[H HeaderTypes](h H) string {
-	return GetHeader(h, KeyAppID)
+func GetAppID[H ~map[string][]string](h H) string {
+	return Get(h, KeyAppID)
 }
 
-func SetAppID[H HeaderTypes](h H, id string) {
-	SetHeader(h, KeyAppID, id)
+func SetAppID[H ~map[string][]string](h H, id string) {
+	Set(h, KeyAppID, id)
 }
 
 /**
@@ -305,16 +242,16 @@ ETag is enclosed in quotes https://www.rfc-editor.org/rfc/rfc7232#section-2.3
      ETag: ""
 */
 
-func GetETag[H HeaderTypes](h H) string {
-	etag := GetHeader(h, KeyETag)
+func GetETag[H ~map[string][]string](h H) string {
+	etag := Get(h, KeyETag)
 	if etag == "" {
-		etag = GetHeader(h, "Etag")
+		etag = Get(h, "Etag")
 	}
 	return etag
 }
 
-func SetETag[H HeaderTypes](h H, etag string) {
-	SetHeader(h, KeyETag, etag)
+func SetETag[H ~map[string][]string](h H, etag string) {
+	Set(h, KeyETag, etag)
 }
 
 func IsWebsocket(h http.Header) bool {
@@ -323,6 +260,55 @@ func IsWebsocket(h http.Header) bool {
 		return false
 	}
 	return strings.EqualFold(h.Get("Upgrade"), "websocket")
+}
+
+func IsMimeText[T string | http.Header](typeOrHeader T) bool {
+	switch v := any(typeOrHeader).(type) {
+	case string:
+		switch v {
+		case MimePlain, MimeHTML, MimeCSS, MimeXML, MimeXML2, MimeXHTML, MimeJSON, MimePlainUTF8, MimeHtmlUTF8,
+			MimeJsonUTF8, MimeXmlUTF8:
+			return true
+		default:
+			return false
+		}
+	case http.Header:
+		return IsMimeText(Get(v, KeyContentType))
+	default:
+		return false
+	}
+}
+
+func IsMimeXML[T string | http.Header](typeOrHeader T) bool {
+	switch v := any(typeOrHeader).(type) {
+	case string:
+		switch v {
+		case MimeXML, MimeXML2, MimeXmlUTF8:
+			return true
+		default:
+			return false
+		}
+	case http.Header:
+		return IsMimeXML(Get(v, KeyContentType))
+	default:
+		return false
+	}
+}
+
+func IsMimeJSON[T string | http.Header](typeOrHeader T) bool {
+	switch v := any(typeOrHeader).(type) {
+	case string:
+		switch v {
+		case MimeJSON, MimeJsonUTF8:
+			return true
+		default:
+			return false
+		}
+	case http.Header:
+		return IsMimeXML(Get(v, KeyContentType))
+	default:
+		return false
+	}
 }
 
 // ToAttachment returns value for Content-Disposition

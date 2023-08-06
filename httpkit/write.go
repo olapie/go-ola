@@ -2,17 +2,19 @@ package httpkit
 
 import (
 	"encoding/json"
-	"go.olapie.com/ola/errorutil"
+	"go.olapie.com/ola/headers"
 	"io"
 	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"go.olapie.com/ola/errorutil"
 )
 
 func BasicAuthenticate(w http.ResponseWriter, realm string) {
 	a := "Basic realm=" + strconv.Quote(realm)
-	w.Header().Set(KeyWWWAuthenticate, a)
+	w.Header().Set(headers.KeyWWWAuthenticate, a)
 	w.WriteHeader(http.StatusUnauthorized)
 }
 
@@ -46,7 +48,7 @@ func JSON(w http.ResponseWriter, v any) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	SetContentType(w.Header(), MimeJsonUTF8)
+	headers.SetContentType(w.Header(), headers.MimeJsonUTF8)
 	_, err = w.Write(data)
 	if err != nil {
 		log.Println(err)
@@ -62,7 +64,7 @@ func JSONOrError(w http.ResponseWriter, v any, err error) {
 }
 
 func OctetStream(w http.ResponseWriter, b []byte) {
-	SetContentType(w.Header(), MimeOctetStream)
+	headers.SetContentType(w.Header(), headers.MimeOctetStream)
 	_, err := w.Write(b)
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -70,7 +72,7 @@ func OctetStream(w http.ResponseWriter, b []byte) {
 }
 
 func HTMLFile(w http.ResponseWriter, s string) {
-	SetContentType(w.Header(), MimeHtmlUTF8)
+	headers.SetContentType(w.Header(), headers.MimeHtmlUTF8)
 	_, err := w.Write([]byte(s))
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -78,7 +80,7 @@ func HTMLFile(w http.ResponseWriter, s string) {
 }
 
 func CSSFile(w http.ResponseWriter, s string) {
-	SetContentType(w.Header(), MimeCSS)
+	headers.SetContentType(w.Header(), headers.MimeCSS)
 	_, err := w.Write([]byte(s))
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -86,7 +88,7 @@ func CSSFile(w http.ResponseWriter, s string) {
 }
 
 func JSFile(w http.ResponseWriter, s string) {
-	SetContentType(w.Header(), MimeJavascript)
+	headers.SetContentType(w.Header(), headers.MimeJavascript)
 	_, err := w.Write([]byte(s))
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -95,9 +97,9 @@ func JSFile(w http.ResponseWriter, s string) {
 
 func StreamFile(w http.ResponseWriter, name string, f io.ReadCloser) {
 	defer f.Close()
-	SetContentType(w.Header(), MimeOctetStream)
+	headers.SetContentType(w.Header(), headers.MimeOctetStream)
 	if name != "" {
-		w.Header().Set(KeyContentDisposition, ToAttachment(name))
+		w.Header().Set(headers.KeyContentDisposition, headers.ToAttachment(name))
 	}
 	_, err := io.Copy(w, f)
 	if err != nil {
