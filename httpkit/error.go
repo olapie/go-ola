@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"go.olapie.com/ola/types"
+	"go.olapie.com/ola/errorutil"
+	"go.olapie.com/ola/internal/types"
 )
 
 func ReadError(resp *http.Response) error {
@@ -17,7 +18,7 @@ func ReadError(resp *http.Response) error {
 
 	contentType := resp.Header.Get("Content-Type")
 	if !isText(contentType) {
-		return types.NewError(resp.StatusCode, resp.Status)
+		return errorutil.NewError(resp.StatusCode, resp.Status)
 	}
 
 	body, ioErr := io.ReadAll(resp.Body)
@@ -42,7 +43,7 @@ func ReadError(resp *http.Response) error {
 		message = resp.Status
 	}
 
-	return types.NewError(code, message)
+	return errorutil.NewError(code, message)
 }
 
 var textTypes = []string{

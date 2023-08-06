@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.olapie.com/ola/types"
+	"go.olapie.com/ola/internal/types"
 )
 
 type Content interface {

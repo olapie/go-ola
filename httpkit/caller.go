@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"go.olapie.com/ola/errorutil"
 	"io"
 	"log"
 	"net/http"
@@ -15,7 +16,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"go.olapie.com/ola/types"
 	"go.olapie.com/ola/urlutil"
 	"go.olapie.com/utils"
 )
@@ -160,10 +160,10 @@ func (c *Caller[IN, OUT]) call(ctx context.Context, input IN) (*http.Response, e
 	resp, err := client.Do(req)
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			err = types.NewError(http.StatusRequestTimeout, err.Error())
+			err = errorutil.NewError(http.StatusRequestTimeout, err.Error())
 		} else {
 			if tr, ok := err.(interface{ Timeout() bool }); ok && tr.Timeout() {
-				err = types.NewError(http.StatusRequestTimeout, err.Error())
+				err = errorutil.NewError(http.StatusRequestTimeout, err.Error())
 			}
 		}
 		return nil, fmt.Errorf("send request: %w", err)
@@ -291,7 +291,7 @@ func GetResponseResult[T any](resp *http.Response) (T, error) {
 		return res, fmt.Errorf("read resp body: %v", err)
 	}
 	if resp.StatusCode >= http.StatusBadRequest {
-		return res, types.NewError(resp.StatusCode, string(body))
+		return res, errorutil.NewError(resp.StatusCode, string(body))
 	}
 
 	if any(res) == nil {

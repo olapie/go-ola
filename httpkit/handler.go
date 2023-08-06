@@ -3,6 +3,7 @@ package httpkit
 import (
 	"context"
 	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/errorutil"
 	"log/slog"
 	"net/http"
 	"time"
@@ -102,7 +103,7 @@ func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Durati
 				next.ServeHTTP(w, req)
 			}
 		} else {
-			Error(w, types.NewError(http.StatusBadRequest, "invalid api key"))
+			Error(w, errorutil.NewError(http.StatusBadRequest, "invalid api key"))
 		}
 
 		status := w.Status()

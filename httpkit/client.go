@@ -3,10 +3,9 @@ package httpkit
 import (
 	"context"
 	"fmt"
+	"go.olapie.com/ola/errorutil"
 	"io"
 	"net/http"
-
-	"go.olapie.com/ola/types"
 )
 
 func DoWithResponse(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {
@@ -29,7 +28,7 @@ func DoWithResponse(ctx context.Context, method, url string, body io.Reader) (*h
 		return nil, fmt.Errorf("io.ReadAll: %w", err)
 	}
 	resp.Body.Close()
-	return nil, types.NewError(resp.StatusCode, string(message))
+	return nil, errorutil.NewError(resp.StatusCode, string(message))
 }
 
 func Do(ctx context.Context, method, url string, body io.Reader) error {
