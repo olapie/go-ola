@@ -5,10 +5,11 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"go.olapie.com/ola/headers"
 	"io"
 	"log"
 	"net/http"
+
+	"go.olapie.com/ola/headers"
 )
 
 var (

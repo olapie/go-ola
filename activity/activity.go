@@ -1,12 +1,13 @@
 package activity
 
 import (
+	"net/http"
+	"strings"
+
 	internalTypes "go.olapie.com/ola/internal/types"
 	"go.olapie.com/ola/session"
 	"go.olapie.com/ola/types"
 	"google.golang.org/grpc/metadata"
-	"net/http"
-	"strings"
 )
 
 const (

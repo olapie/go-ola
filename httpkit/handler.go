@@ -2,7 +2,6 @@ package httpkit
 
 import (
 	"context"
-	"go.olapie.com/ola/headers"
 	"log/slog"
 	"net/http"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/errorutil"
+	"go.olapie.com/ola/headers"
 	"go.olapie.com/ola/types"
 	"go.olapie.com/security/base62"
 )

@@ -1,10 +1,11 @@
 package headers
 
 import (
-	"go.olapie.com/security/base62"
-	"go.olapie.com/utils"
 	"net/http"
 	"testing"
+
+	"go.olapie.com/security/base62"
+	"go.olapie.com/utils"
 )
 
 func TestSetAPIKey(t *testing.T) {

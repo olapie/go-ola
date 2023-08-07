@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"go.olapie.com/security"
-	"go.olapie.com/security/base62"
 	"log/slog"
 	"time"
+
+	"go.olapie.com/security"
+	"go.olapie.com/security/base62"
 )
 
 func SetAPIKey[T ~map[string][]string](h T) {
