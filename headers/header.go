@@ -84,22 +84,24 @@ const (
 	MimeXmlUTF8  = MimeXML + charsetSuffix
 )
 
-func Get[H ~map[string][]string](h H, key string) string {
-	if l := h[key]; len(l) != 0 {
-		return l[0]
-	}
-
-	if l := h[strings.ToLower(key)]; len(l) != 0 {
-		return l[0]
-	}
-
-	if v := http.Header(h).Get(key); v != "" {
-		return v
-	}
-	return ""
+type HeaderTypes interface {
+	~map[string][]string | ~map[string]string
 }
 
-func Set[H ~map[string][]string](h H, key, value string) {
+func Get[H HeaderTypes](h H, key string) string {
+	switch m := any(h).(type) {
+	case map[string]string:
+		return m[key]
+	case map[string][]string:
+		return http.Header(m).Get(key)
+	case http.Header:
+		return m.Get(key)
+	default:
+		panic(fmt.Sprintf("unsupported type %T", h))
+	}
+}
+
+func Set[H HeaderTypes](h H, key, value string) {
 	switch m := any(h).(type) {
 	case map[string]string:
 		m[key] = value
@@ -113,14 +115,14 @@ func Set[H ~map[string][]string](h H, key, value string) {
 	}
 }
 
-func SetNX[H ~map[string][]string](h H, key, value string) {
+func SetNX[H HeaderTypes](h H, key, value string) {
 	if Get(h, key) != "" {
 		return
 	}
 	Set(h, key, value)
 }
 
-func GetAcceptEncodings[H ~map[string][]string](h H) []string {
+func GetAcceptEncodings[H HeaderTypes](h H) []string {
 	a := strings.Split(Get(h, KeyAcceptEncoding), ",")
 	for i, s := range a {
 		a[i] = strings.TrimSpace(s)
@@ -135,32 +137,32 @@ func GetAcceptEncodings[H ~map[string][]string](h H) []string {
 	return a
 }
 
-func GetContentType[H ~map[string][]string](h H) string {
+func GetContentType[H HeaderTypes](h H) string {
 	t, _, _ := mime.ParseMediaType(Get(h, KeyContentType))
 	return t
 }
 
-func SetContentType[H ~map[string][]string](h H, contentType string) {
+func SetContentType[H HeaderTypes](h H, contentType string) {
 	Set(h, KeyContentType, contentType)
 }
 
-func SetContentTypeNX[H ~map[string][]string](h H, contentType string) {
+func SetContentTypeNX[H HeaderTypes](h H, contentType string) {
 	SetNX(h, KeyContentType, contentType)
 }
 
-func GetAuthorization[H ~map[string][]string](h H) string {
+func GetAuthorization[H HeaderTypes](h H) string {
 	return Get(h, KeyAuthorization)
 }
 
-func SetAuthorization[H ~map[string][]string](h H, contentType string) {
+func SetAuthorization[H HeaderTypes](h H, contentType string) {
 	Set(h, KeyContentType, contentType)
 }
 
-func SetAuthorizationNX[H ~map[string][]string](h H, contentType string) {
+func SetAuthorizationNX[H HeaderTypes](h H, contentType string) {
 	SetNX(h, KeyContentType, contentType)
 }
 
-func GetBasicAccount[H ~map[string][]string](h H) (user string, password string) {
+func GetBasicAccount[H HeaderTypes](h H) (user string, password string) {
 	s := GetAuthorization(h)
 	l := strings.Split(s, " ")
 	if len(l) != 2 {
@@ -184,7 +186,7 @@ func GetBasicAccount[H ~map[string][]string](h H) (user string, password string)
 }
 
 // GetBearer returns bearer token in header
-func GetBearer[H ~map[string][]string](h H) string {
+func GetBearer[H HeaderTypes](h H) string {
 	s := GetAuthorization(h)
 	l := strings.Split(s, " ")
 	if len(l) != 2 {
@@ -196,40 +198,40 @@ func GetBearer[H ~map[string][]string](h H) string {
 	return ""
 }
 
-func SetBearer[H ~map[string][]string](h H, bearer string) {
+func SetBearer[H HeaderTypes](h H, bearer string) {
 	authorization := Bearer + " " + bearer
 	Set(h, KeyAuthorization, authorization)
 }
 
-func GetContentEncoding[H ~map[string][]string](h H, encoding string) string {
+func GetContentEncoding[H HeaderTypes](h H, encoding string) string {
 	return Get(h, KeyContentEncoding)
 }
 
-func SetContentEncoding[H ~map[string][]string](h H, encoding string) {
+func SetContentEncoding[H HeaderTypes](h H, encoding string) {
 	Set(h, KeyContentEncoding, encoding)
 }
 
-func GetTraceID[H ~map[string][]string](h H) string {
+func GetTraceID[H HeaderTypes](h H) string {
 	return Get(h, KeyTraceID)
 }
 
-func SetTraceID[H ~map[string][]string](h H, id string) {
+func SetTraceID[H HeaderTypes](h H, id string) {
 	Set(h, KeyTraceID, id)
 }
 
-func GetClientID[H ~map[string][]string](h H) string {
+func GetClientID[H HeaderTypes](h H) string {
 	return Get(h, KeyClientID)
 }
 
-func SetClientID[H ~map[string][]string](h H, id string) {
+func SetClientID[H HeaderTypes](h H, id string) {
 	Set(h, KeyClientID, id)
 }
 
-func GetAppID[H ~map[string][]string](h H) string {
+func GetAppID[H HeaderTypes](h H) string {
 	return Get(h, KeyAppID)
 }
 
-func SetAppID[H ~map[string][]string](h H, id string) {
+func SetAppID[H HeaderTypes](h H, id string) {
 	Set(h, KeyAppID, id)
 }
 
@@ -242,7 +244,7 @@ ETag is enclosed in quotes https://www.rfc-editor.org/rfc/rfc7232#section-2.3
      ETag: ""
 */
 
-func GetETag[H ~map[string][]string](h H) string {
+func GetETag[H HeaderTypes](h H) string {
 	etag := Get(h, KeyETag)
 	if etag == "" {
 		etag = Get(h, "Etag")
@@ -250,7 +252,7 @@ func GetETag[H ~map[string][]string](h H) string {
 	return etag
 }
 
-func SetETag[H ~map[string][]string](h H, etag string) {
+func SetETag[H HeaderTypes](h H, etag string) {
 	Set(h, KeyETag, etag)
 }
 
