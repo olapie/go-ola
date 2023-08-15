@@ -80,6 +80,10 @@ func (a *activityImpl) Set(key string, value string) {
 }
 
 func (a *activityImpl) Get(key string) string {
+	if a == nil {
+		return ""
+	}
+
 	if l := a.header[key]; len(l) != 0 {
 		return l[0]
 	}
