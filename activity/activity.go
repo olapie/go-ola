@@ -1,6 +1,7 @@
 package activity
 
 import (
+	"go.olapie.com/ola/headers"
 	"net/http"
 	"reflect"
 	"strings"
@@ -90,6 +91,22 @@ func (a *Activity) Get(key string) string {
 		return v
 	}
 	return ""
+}
+
+func (a *Activity) GetTraceID() string {
+	return a.Get(headers.KeyTraceID)
+}
+
+func (a *Activity) SetTraceID(id string) {
+	a.Set(headers.KeyTraceID, id)
+}
+
+func (a *Activity) GetClientID() string {
+	return a.Get(headers.KeyClientID)
+}
+
+func (a *Activity) SetClientID(id string) {
+	a.Set(headers.KeyClientID, id)
 }
 
 // Header returns values for http.Header or metadata.MD
