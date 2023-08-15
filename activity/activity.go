@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"sync"
 
 	internalTypes "go.olapie.com/ola/internal/types"
 	"go.olapie.com/ola/session"
@@ -11,24 +12,22 @@ import (
 )
 
 const (
-	ErrNotExist internalTypes.ErrorString = "activityImpl does not exist"
+	ErrNotExist internalTypes.ErrorString = "Activity does not exist"
 )
 
-type Activity interface {
-	Name() string
-	Session() *session.Session
-	UserID() types.UserID
-	SetUserID(id types.UserID)
-	Set(key string, value string)
-	Get(key string) string
+type Activity struct {
+	name string
+	// header can be http.Header or grpc metadata.MD
+	header         map[string][]string
+	initHeaderOnce sync.Once
 
-	// Header returns values for http.Header or metadata.MD
-	// As http.Header and metadata.MD format header key in different ways, please copy values by http.Header.Set or metadata.MD.Set
-	Header() map[string][]string
+	//Session is only available in incoming context, may be nil if session is not enabled
+	session *session.Session
+	userID  types.UserID
 }
 
-func New[T ~map[string][]string | ~map[string]string](name string, header T) Activity {
-	a := &activityImpl{
+func New[T ~map[string][]string | ~map[string]string](name string, header T) *Activity {
+	a := &Activity{
 		name: name,
 	}
 
@@ -49,38 +48,33 @@ func New[T ~map[string][]string | ~map[string]string](name string, header T) Act
 	return a
 }
 
-type activityImpl struct {
-	name string
-	// header can be http.Header or grpc metadata.MD
-	header map[string][]string
-
-	//Session is only available in incoming context, may be nil if session is not enabled
-	session *session.Session
-	userID  types.UserID
-}
-
-func (a *activityImpl) Name() string {
+func (a *Activity) Name() string {
 	return a.name
 }
 
-func (a *activityImpl) Session() *session.Session {
+func (a *Activity) Session() *session.Session {
 	return a.session
 }
 
-func (a *activityImpl) UserID() types.UserID {
+func (a *Activity) UserID() types.UserID {
 	return a.userID
 }
 
-func (a *activityImpl) SetUserID(id types.UserID) {
+func (a *Activity) SetUserID(id types.UserID) {
 	a.userID = id
 }
 
-func (a *activityImpl) Set(key string, value string) {
+func (a *Activity) Set(key string, value string) {
+	if a.header == nil {
+		a.initHeaderOnce.Do(func() {
+			a.header = make(map[string][]string)
+		})
+	}
 	a.header[key] = []string{value}
 }
 
-func (a *activityImpl) Get(key string) string {
-	if a == nil {
+func (a *Activity) Get(key string) string {
+	if a == nil || a.header == nil {
 		return ""
 	}
 
@@ -98,6 +92,13 @@ func (a *activityImpl) Get(key string) string {
 	return ""
 }
 
-func (a *activityImpl) Header() map[string][]string {
+// Header returns values for http.Header or metadata.MD
+// As http.Header and metadata.MD format header key in different ways, please copy values by http.Header.Set or metadata.MD.Set
+func (a *Activity) Header() map[string][]string {
+	if a.header == nil {
+		a.initHeaderOnce.Do(func() {
+			a.header = make(map[string][]string)
+		})
+	}
 	return a.header
 }

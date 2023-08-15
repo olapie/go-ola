@@ -11,21 +11,21 @@ import (
 type activityIncomingContext struct{}
 type activityOutgoingContext struct{}
 
-func FromIncomingContext(ctx context.Context) Activity {
-	a, _ := ctx.Value(activityIncomingContext{}).(Activity)
+func FromIncomingContext(ctx context.Context) *Activity {
+	a, _ := ctx.Value(activityIncomingContext{}).(*Activity)
 	return a
 }
 
-func FromOutgoingContext(ctx context.Context) Activity {
-	a, _ := ctx.Value(activityOutgoingContext{}).(Activity)
+func FromOutgoingContext(ctx context.Context) *Activity {
+	a, _ := ctx.Value(activityOutgoingContext{}).(*Activity)
 	return a
 }
 
-func NewIncomingContext(ctx context.Context, a Activity) context.Context {
+func NewIncomingContext(ctx context.Context, a *Activity) context.Context {
 	return context.WithValue(ctx, activityIncomingContext{}, a)
 }
 
-func NewOutgoingContext(ctx context.Context, a Activity) context.Context {
+func NewOutgoingContext(ctx context.Context, a *Activity) context.Context {
 	return context.WithValue(ctx, activityOutgoingContext{}, a)
 }
 
