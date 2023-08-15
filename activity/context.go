@@ -42,7 +42,7 @@ func GetIncomingUserID[T types.UserIDTypes](ctx context.Context) T {
 	var id T
 	a := FromIncomingContext(ctx)
 	if a == nil {
-		slog.Warn("no activity")
+		slog.Warn("no activityImpl")
 		return id
 	}
 

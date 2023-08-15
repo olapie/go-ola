@@ -2,16 +2,16 @@ package activity
 
 import (
 	"net/http"
+	"reflect"
 	"strings"
 
 	internalTypes "go.olapie.com/ola/internal/types"
 	"go.olapie.com/ola/session"
 	"go.olapie.com/ola/types"
-	"google.golang.org/grpc/metadata"
 )
 
 const (
-	ErrNotExist internalTypes.ErrorString = "activity does not exist"
+	ErrNotExist internalTypes.ErrorString = "activityImpl does not exist"
 )
 
 type Activity interface {
@@ -27,18 +27,29 @@ type Activity interface {
 	Header() map[string][]string
 }
 
-func New[T http.Header | metadata.MD](name string, header T) Activity {
-	a := &activity{
-		name:   name,
-		header: header,
+func New[T ~map[string][]string | ~map[string]string](name string, header T) Activity {
+	a := &activityImpl{
+		name: name,
 	}
-	if a.header == nil {
+
+	if header != nil {
+		headerVal := reflect.ValueOf(header)
+		if headerVal.Type().Elem().Kind() == reflect.String {
+			a.header = headerVal.Convert(reflect.TypeOf(map[string][]string(nil))).Interface().(map[string][]string)
+		} else {
+			m := headerVal.Convert(reflect.TypeOf(map[string]string(nil))).Interface().(map[string]string)
+			a.header = make(map[string][]string, len(m))
+			for k, v := range m {
+				a.header[k] = []string{v}
+			}
+		}
+	} else {
 		a.header = make(map[string][]string)
 	}
 	return a
 }
 
-type activity struct {
+type activityImpl struct {
 	name string
 	// header can be http.Header or grpc metadata.MD
 	header map[string][]string
@@ -48,27 +59,27 @@ type activity struct {
 	userID  types.UserID
 }
 
-func (a *activity) Name() string {
+func (a *activityImpl) Name() string {
 	return a.name
 }
 
-func (a *activity) Session() *session.Session {
+func (a *activityImpl) Session() *session.Session {
 	return a.session
 }
 
-func (a *activity) UserID() types.UserID {
+func (a *activityImpl) UserID() types.UserID {
 	return a.userID
 }
 
-func (a *activity) SetUserID(id types.UserID) {
+func (a *activityImpl) SetUserID(id types.UserID) {
 	a.userID = id
 }
 
-func (a *activity) Set(key string, value string) {
+func (a *activityImpl) Set(key string, value string) {
 	a.header[key] = []string{value}
 }
 
-func (a *activity) Get(key string) string {
+func (a *activityImpl) Get(key string) string {
 	if l := a.header[key]; len(l) != 0 {
 		return l[0]
 	}
@@ -83,6 +94,6 @@ func (a *activity) Get(key string) string {
 	return ""
 }
 
-func (a *activity) Header() map[string][]string {
+func (a *activityImpl) Header() map[string][]string {
 	return a.header
 }
