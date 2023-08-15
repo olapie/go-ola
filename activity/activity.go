@@ -109,6 +109,14 @@ func (a *Activity) SetClientID(id string) {
 	a.Set(headers.KeyClientID, id)
 }
 
+func (a *Activity) GetAuthorization() string {
+	return a.Get(headers.KeyAuthorization)
+}
+
+func (a *Activity) SetAuthorization(auth string) {
+	a.Set(headers.KeyAuthorization, auth)
+}
+
 // Header returns values for http.Header or metadata.MD
 // As http.Header and metadata.MD format header key in different ways, please copy values by http.Header.Set or metadata.MD.Set
 func (a *Activity) Header() map[string][]string {
