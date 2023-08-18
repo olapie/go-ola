@@ -45,48 +45,6 @@ const (
 	Basic  = "Basic"
 )
 
-const (
-	MimePlain      = "text/plain"
-	MimeHTML       = "text/html"
-	MimeXML2       = "text/xml"
-	MimeCSS        = "text/css"
-	MimeJavascript = "text/javascript" // application/javascript is obsolete
-
-	MimeXML      = "application/xml"
-	MimeXHTML    = "application/xhtml+xml"
-	MimeProtobuf = "application/x-protobuf"
-
-	MimeFormData = "multipart/form-data"
-	MimeGIF      = "image/gif"
-	MimeJPEG     = "image/jpeg"
-	MimePNG      = "image/png"
-	MimeWEBP     = "image/webp"
-	MimeICON     = "image/x-icon"
-
-	MimeMPEG = "video/mpeg"
-
-	FormURLEncoded  = "application/x-www-form-urlencoded"
-	MimeOctetStream = "application/octet-stream"
-	MimeJSON        = "application/json"
-	MimePDF         = "application/pdf"
-	MimeMSWord      = "application/msword"
-	MimeGZIP        = "application/x-gzip"
-	MimeWASM        = "application/wasm"
-)
-
-const (
-	MimeCharsetUTF8 = "charset=utf-8"
-
-	charsetSuffix = "; " + MimeCharsetUTF8
-
-	MimePlainUTF8 = MimePlain + charsetSuffix
-
-	// MimeHtmlUTF8 is better than HTMLUTF8, etc.
-	MimeHtmlUTF8 = MimeHTML + charsetSuffix
-	MimeJsonUTF8 = MimeJSON + charsetSuffix
-	MimeXmlUTF8  = MimeXML + charsetSuffix
-)
-
 type HeaderTypes interface {
 	~map[string][]string | ~map[string]string
 }
@@ -106,7 +64,10 @@ func get[H HeaderTypes](h H, key string) string {
 	case map[string][]string:
 		return http.Header(m).Get(key)
 	case metadata.MD:
-		return http.Header(m).Get(key)
+		if a := m.Get(key); len(a) != 0 {
+			return a[0]
+		}
+		return ""
 	case http.Header:
 		return m.Get(key)
 	default:
@@ -128,7 +89,7 @@ func Set[H HeaderTypes](h H, key, value string) {
 		hh := http.Header(m)
 		hh.Set(key, value)
 	case metadata.MD:
-		m.Set(key, value)
+		m.Set(strings.ToLower(key), value)
 	case http.Header:
 		m.Set(key, value)
 	default:
@@ -289,55 +250,6 @@ func IsWebsocket(h http.Header) bool {
 		return false
 	}
 	return strings.EqualFold(h.Get("Upgrade"), "websocket")
-}
-
-func IsMimeText[T string | http.Header](typeOrHeader T) bool {
-	switch v := any(typeOrHeader).(type) {
-	case string:
-		switch v {
-		case MimePlain, MimeHTML, MimeCSS, MimeXML, MimeXML2, MimeXHTML, MimeJSON, MimePlainUTF8, MimeHtmlUTF8,
-			MimeJsonUTF8, MimeXmlUTF8:
-			return true
-		default:
-			return false
-		}
-	case http.Header:
-		return IsMimeText(Get(v, KeyContentType))
-	default:
-		return false
-	}
-}
-
-func IsMimeXML[T string | http.Header](typeOrHeader T) bool {
-	switch v := any(typeOrHeader).(type) {
-	case string:
-		switch v {
-		case MimeXML, MimeXML2, MimeXmlUTF8:
-			return true
-		default:
-			return false
-		}
-	case http.Header:
-		return IsMimeXML(Get(v, KeyContentType))
-	default:
-		return false
-	}
-}
-
-func IsMimeJSON[T string | http.Header](typeOrHeader T) bool {
-	switch v := any(typeOrHeader).(type) {
-	case string:
-		switch v {
-		case MimeJSON, MimeJsonUTF8:
-			return true
-		default:
-			return false
-		}
-	case http.Header:
-		return IsMimeXML(Get(v, KeyContentType))
-	default:
-		return false
-	}
 }
 
 // ToAttachment returns value for Content-Disposition

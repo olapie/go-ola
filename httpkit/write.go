@@ -2,6 +2,7 @@ package httpkit
 
 import (
 	"encoding/json"
+	"go.olapie.com/ola/mimetypes"
 	"io"
 	"log"
 	"log/slog"
@@ -49,7 +50,7 @@ func JSON(w http.ResponseWriter, v any) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	headers.SetContentType(w.Header(), headers.MimeJsonUTF8)
+	headers.SetContentType(w.Header(), mimetypes.JsonUTF8)
 	_, err = w.Write(data)
 	if err != nil {
 		log.Println(err)
@@ -65,7 +66,7 @@ func JSONOrError(w http.ResponseWriter, v any, err error) {
 }
 
 func OctetStream(w http.ResponseWriter, b []byte) {
-	headers.SetContentType(w.Header(), headers.MimeOctetStream)
+	headers.SetContentType(w.Header(), mimetypes.OctetStream)
 	_, err := w.Write(b)
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -73,7 +74,7 @@ func OctetStream(w http.ResponseWriter, b []byte) {
 }
 
 func HTMLFile(w http.ResponseWriter, s string) {
-	headers.SetContentType(w.Header(), headers.MimeHtmlUTF8)
+	headers.SetContentType(w.Header(), mimetypes.HtmlUTF8)
 	_, err := w.Write([]byte(s))
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -81,7 +82,7 @@ func HTMLFile(w http.ResponseWriter, s string) {
 }
 
 func CSSFile(w http.ResponseWriter, s string) {
-	headers.SetContentType(w.Header(), headers.MimeCSS)
+	headers.SetContentType(w.Header(), mimetypes.CSS)
 	_, err := w.Write([]byte(s))
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -89,7 +90,7 @@ func CSSFile(w http.ResponseWriter, s string) {
 }
 
 func JSFile(w http.ResponseWriter, s string) {
-	headers.SetContentType(w.Header(), headers.MimeJavascript)
+	headers.SetContentType(w.Header(), mimetypes.Javascript)
 	_, err := w.Write([]byte(s))
 	if err != nil {
 		slog.Error("cannot write", "err", err.Error())
@@ -98,7 +99,7 @@ func JSFile(w http.ResponseWriter, s string) {
 
 func StreamFile(w http.ResponseWriter, name string, f io.ReadCloser) {
 	defer f.Close()
-	headers.SetContentType(w.Header(), headers.MimeOctetStream)
+	headers.SetContentType(w.Header(), mimetypes.OctetStream)
 	if name != "" {
 		w.Header().Set(headers.KeyContentDisposition, headers.ToAttachment(name))
 	}

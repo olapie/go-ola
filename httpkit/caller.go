@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"go.olapie.com/ola/mimetypes"
 	"io"
 	"log"
 	"net/http"
@@ -186,7 +187,7 @@ func (c *Caller[IN, OUT]) parseInput(contentType *string, endpoint *string, inpu
 	body, ok := input.(io.Reader)
 	if ok {
 		if *contentType == "" {
-			*contentType = headers.MimeOctetStream
+			*contentType = mimetypes.OctetStream
 		}
 		return body, nil
 	}
@@ -210,7 +211,7 @@ func (c *Caller[IN, OUT]) parseInput(contentType *string, endpoint *string, inpu
 	kindOfRemain := utils.IndirectKind(remain)
 	switch kindOfRemain {
 	case reflect.Struct, reflect.Map, reflect.Slice:
-		*contentType = headers.MimeJsonUTF8
+		*contentType = mimetypes.JsonUTF8
 		data, err := json.Marshal(input)
 		if err != nil {
 			return nil, fmt.Errorf("marshal: %w", err)
@@ -218,7 +219,7 @@ func (c *Caller[IN, OUT]) parseInput(contentType *string, endpoint *string, inpu
 		return bytes.NewBuffer(data), nil
 	default:
 		if utils.IsNumber(remain) || utils.IsString(remain) {
-			*contentType = headers.MimePlainUTF8
+			*contentType = mimetypes.PlainUTF8
 			return bytes.NewReader([]byte(fmt.Sprint(remain))), nil
 		}
 		return nil, fmt.Errorf("unsupported value type: %T", input)
@@ -266,11 +267,11 @@ type UnmarshalFunc func([]byte, any) error
 var contentTypeToUnmarshalFunc sync.Map
 
 func init() {
-	RegisterUnmarshalFunc(headers.MimeJSON, json.Unmarshal)
-	RegisterUnmarshalFunc(headers.MimeJsonUTF8, json.Unmarshal)
-	RegisterUnmarshalFunc(headers.MimeXML, xml.Unmarshal)
-	RegisterUnmarshalFunc(headers.MimeXML2, xml.Unmarshal)
-	RegisterUnmarshalFunc(headers.MimeXmlUTF8, xml.Unmarshal)
+	RegisterUnmarshalFunc(mimetypes.JSON, json.Unmarshal)
+	RegisterUnmarshalFunc(mimetypes.JsonUTF8, json.Unmarshal)
+	RegisterUnmarshalFunc(mimetypes.XML, xml.Unmarshal)
+	RegisterUnmarshalFunc(mimetypes.XML2, xml.Unmarshal)
+	RegisterUnmarshalFunc(mimetypes.XmlUTF8, xml.Unmarshal)
 }
 
 func RegisterUnmarshalFunc(contentType string, f UnmarshalFunc) {
