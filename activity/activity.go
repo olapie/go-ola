@@ -1,12 +1,12 @@
 package activity
 
 import (
-	"go.olapie.com/ola/headers"
 	"net/http"
 	"reflect"
 	"strings"
 	"sync"
 
+	"go.olapie.com/ola/headers"
 	internalTypes "go.olapie.com/ola/internal/types"
 	"go.olapie.com/ola/session"
 	"go.olapie.com/ola/types"
