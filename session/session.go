@@ -56,11 +56,11 @@ func (s *Session) SetUserID(ctx context.Context, userID types.UserID) error {
 		ot := reflect.TypeOf(s.userID)
 		nt := reflect.TypeOf(userID)
 		if ot != nt {
-			logs.FromCtx(ctx).Warn("different userID type",
+			logs.FromContext(ctx).Warn("different userID type",
 				slog.String("old", ot.String()),
 				slog.String("new", nt.String()))
 		} else if s.userID != userID {
-			logs.FromCtx(ctx).Warn("overwriting userID value",
+			logs.FromContext(ctx).Warn("overwriting userID value",
 				slog.Any("old", s.userID),
 				slog.Any("new", userID))
 		}

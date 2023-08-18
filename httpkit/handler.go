@@ -61,7 +61,7 @@ func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Durati
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
 		}
-		logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
+		logger := logs.FromContext(ctx).With(slog.String("trace_id", traceID))
 		fields := make([]any, 0, 4+len(req.Header))
 		fields = append(fields,
 			slog.String("uri", req.RequestURI),

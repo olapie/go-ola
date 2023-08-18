@@ -3,6 +3,7 @@ package grpcutil
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -32,7 +33,7 @@ func ServerStart(ctx context.Context, info *grpc.UnaryServerInfo) (context.Conte
 	}
 
 	if !headers.VerifyAPIKey(md, 10) {
-		logs.FromCtx(ctx).Warn("invalid api key", md)
+		logs.FromContext(ctx).Warn("invalid api key", md)
 		return nil, status.Error(codes.InvalidArgument, "failed verifying")
 	}
 
@@ -43,7 +44,7 @@ func ServerStart(ctx context.Context, info *grpc.UnaryServerInfo) (context.Conte
 		a.Set(headers.KeyTraceID, traceID)
 	}
 	ctx = activity.NewIncomingContext(ctx, a)
-	logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
+	logger := logs.FromContext(ctx).With(slog.String("trace_id", traceID))
 	fields := make([]any, 0, len(md)+1)
 	fields = append(fields, slog.String("full_method", info.FullMethod))
 	for k, v := range md {
@@ -53,7 +54,7 @@ func ServerStart(ctx context.Context, info *grpc.UnaryServerInfo) (context.Conte
 		fields = append(fields, slog.String(k, v[0]))
 	}
 	logger.Info("start", fields...)
-	ctx = logs.NewCtx(ctx, logger)
+	ctx = logs.NewContext(ctx, logger)
 	return ctx, nil
 }
 
@@ -90,6 +91,7 @@ func SignClientContext(ctx context.Context) context.Context {
 		traceID = a.Get(headers.KeyTraceID)
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
+			logs.FromContext(ctx).Info("generated trace id " + traceID)
 		}
 		md.Set(headers.KeyTraceID, traceID)
 	}
@@ -99,7 +101,7 @@ func SignClientContext(ctx context.Context) context.Context {
 		if clientID != "" {
 			md.Set(headers.KeyClientID, clientID)
 		} else {
-			slog.Warn("missing ClientID in context")
+			logs.FromContext(ctx).Warn(fmt.Sprintf("missing %s in context", headers.KeyClientID))
 		}
 	}
 
@@ -108,7 +110,7 @@ func SignClientContext(ctx context.Context) context.Context {
 		if appID != "" {
 			md.Set(headers.KeyAppID, appID)
 		} else {
-			slog.Warn("missing ClientID in context")
+			logs.FromContext(ctx).Warn(fmt.Sprintf("missing %s in context", headers.KeyAppID))
 		}
 	}
 
@@ -117,7 +119,7 @@ func SignClientContext(ctx context.Context) context.Context {
 		if auth != "" {
 			md.Set(headers.KeyAuthorization, auth)
 		} else {
-			slog.Warn("missing Authorization in context")
+			logs.FromContext(ctx).Warn(fmt.Sprintf("missing %s in context", headers.KeyAuthorization))
 		}
 	}
 
