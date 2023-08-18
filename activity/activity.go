@@ -34,10 +34,10 @@ func New[T ~map[string][]string | ~map[string]string](name string, header T) *Ac
 
 	if header != nil {
 		headerVal := reflect.ValueOf(header)
-		if headerVal.Type().Elem().Kind() == reflect.String {
-			a.header = headerVal.Convert(reflect.TypeOf(map[string][]string(nil))).Interface().(map[string][]string)
+		if headerVal.Type().Elem().Kind() != reflect.String {
+			a.header = headerVal.Convert(internalTypes.MapStringToStringSliceType).Interface().(map[string][]string)
 		} else {
-			m := headerVal.Convert(reflect.TypeOf(map[string]string(nil))).Interface().(map[string]string)
+			m := headerVal.Convert(reflect.TypeOf(internalTypes.MapStringToStringType)).Interface().(map[string]string)
 			a.header = make(map[string][]string, len(m))
 			for k, v := range m {
 				a.header[k] = []string{v}

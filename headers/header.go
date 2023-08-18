@@ -3,6 +3,7 @@ package headers
 import (
 	"encoding/base64"
 	"fmt"
+	"go.olapie.com/ola/internal/types"
 	"google.golang.org/grpc/metadata"
 	"mime"
 	"net/http"
@@ -86,9 +87,6 @@ const (
 	MimeXmlUTF8  = MimeXML + charsetSuffix
 )
 
-var mapStringToStringType = reflect.TypeOf(map[string]string(nil))
-var mapStringToStringSliceType = reflect.TypeOf(map[string][]string(nil))
-
 type HeaderTypes interface {
 	~map[string][]string | ~map[string]string
 }
@@ -113,10 +111,10 @@ func get[H HeaderTypes](h H, key string) string {
 		return m.Get(key)
 	default:
 		v := reflect.ValueOf(h)
-		if v.CanConvert(mapStringToStringType) {
-			return v.Convert(mapStringToStringType).Interface().(map[string]string)[key]
-		} else if v.CanConvert(mapStringToStringSliceType) {
-			return http.Header(v.Convert(mapStringToStringSliceType).Interface().(map[string][]string)).Get(key)
+		if v.CanConvert(types.MapStringToStringType) {
+			return v.Convert(types.MapStringToStringType).Interface().(map[string]string)[key]
+		} else if v.CanConvert(types.MapStringToStringSliceType) {
+			return http.Header(v.Convert(types.MapStringToStringSliceType).Interface().(map[string][]string)).Get(key)
 		}
 		panic(fmt.Sprintf("unsupported type %T", h))
 	}
@@ -135,10 +133,10 @@ func Set[H HeaderTypes](h H, key, value string) {
 		m.Set(key, value)
 	default:
 		v := reflect.ValueOf(h)
-		if v.CanConvert(mapStringToStringType) {
-			v.Convert(mapStringToStringType).Interface().(map[string]string)[key] = value
-		} else if v.CanConvert(mapStringToStringSliceType) {
-			http.Header(v.Convert(mapStringToStringSliceType).Interface().(map[string][]string)).Set(key, value)
+		if v.CanConvert(types.MapStringToStringType) {
+			v.Convert(types.MapStringToStringType).Interface().(map[string]string)[key] = value
+		} else if v.CanConvert(types.MapStringToStringSliceType) {
+			http.Header(v.Convert(types.MapStringToStringSliceType).Interface().(map[string][]string)).Set(key, value)
 		}
 		panic(fmt.Sprintf("unsupported type %T", h))
 	}
