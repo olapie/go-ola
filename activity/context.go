@@ -46,8 +46,12 @@ func GetIncomingUserID[T types.UserIDTypes](ctx context.Context) T {
 		return id
 	}
 
-	v := a.UserID().Value()
-	if id, ok := a.UserID().Value().(T); ok {
+	if a.userID == nil {
+		return id
+	}
+
+	v := a.userID.Value()
+	if id, ok := v.(T); ok {
 		return id
 	}
 
