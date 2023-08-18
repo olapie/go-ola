@@ -21,7 +21,7 @@ func SetAPIKey[T ~map[string][]string](h T) {
 	hash := security.Hash32(fmt.Sprint(t) + traceID + clientID)
 	copy(b[9:], hash[:])
 	sign := base62.EncodeToString(b[:])
-	h[KeyAPIKey] = []string{sign}
+	Set(h, KeyAPIKey, sign)
 }
 
 func VerifyAPIKey[T ~map[string][]string](h T, delaySeconds int) bool {
