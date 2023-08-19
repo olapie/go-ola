@@ -3,7 +3,6 @@ package grpcutil
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -86,43 +85,18 @@ func SignClientContext(ctx context.Context) context.Context {
 	}
 
 	a := activity.FromOutgoingContext(ctx)
-
+	if a != nil {
+		activity.CopyHeader(md, a)
+	} else {
+		logs.FromContext(ctx).Warn("no outgoing context")
+	}
 	if traceID := headers.Get(md, headers.KeyTraceID); traceID == "" {
-		traceID = a.Get(headers.KeyTraceID)
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
 			logs.FromContext(ctx).Info("generated trace id " + traceID)
 		}
 		md.Set(headers.KeyTraceID, traceID)
 	}
-
-	if clientID := headers.Get(md, headers.KeyClientID); clientID == "" {
-		clientID = a.Get(headers.KeyClientID)
-		if clientID != "" {
-			md.Set(headers.KeyClientID, clientID)
-		} else {
-			logs.FromContext(ctx).Warn(fmt.Sprintf("missing %s in context", headers.KeyClientID))
-		}
-	}
-
-	if appID := headers.Get(md, headers.KeyAppID); appID == "" {
-		appID = a.Get(headers.KeyAppID)
-		if appID != "" {
-			md.Set(headers.KeyAppID, appID)
-		} else {
-			logs.FromContext(ctx).Warn(fmt.Sprintf("missing %s in context", headers.KeyAppID))
-		}
-	}
-
-	if auth := headers.Get(md, headers.KeyAuthorization); auth == "" {
-		auth = a.Get(headers.KeyAuthorization)
-		if auth != "" {
-			md.Set(headers.KeyAuthorization, auth)
-		} else {
-			logs.FromContext(ctx).Warn(fmt.Sprintf("missing %s in context", headers.KeyAuthorization))
-		}
-	}
-
 	headers.SetAPIKey(md)
 	return metadata.NewOutgoingContext(ctx, md)
 }

@@ -42,6 +42,10 @@ func New[H HeaderTypes](name string, header H) *Activity {
 		name: name,
 	}
 
+	if header == nil {
+		panic("header is nil")
+	}
+
 	switch v := any(header).(type) {
 	case http.Header:
 		a.header = v
@@ -147,7 +151,9 @@ func CopyHeader[H HeaderTypes](dest H, a *Activity) {
 		if a.header != nil {
 			maps.Copy(h, a.header)
 		} else if a.md != nil {
-			maps.Copy(h, a.md)
+			for k, v := range a.md {
+				h[textproto.CanonicalMIMEHeaderKey(k)] = v
+			}
 		} else {
 			for k, v := range a.properties {
 				h.Set(k, v)
@@ -155,7 +161,9 @@ func CopyHeader[H HeaderTypes](dest H, a *Activity) {
 		}
 	case metadata.MD:
 		if a.header != nil {
-			maps.Copy(h, a.header)
+			for k, v := range a.header {
+				h[strings.ToLower(k)] = v
+			}
 		} else if a.md != nil {
 			maps.Copy(h, a.md)
 		} else {
