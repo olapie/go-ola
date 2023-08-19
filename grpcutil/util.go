@@ -13,6 +13,7 @@ import (
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/errorutil"
 	"go.olapie.com/ola/headers"
+	"go.olapie.com/ola/types"
 	"go.olapie.com/security/base62"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -25,25 +26,24 @@ import (
 
 var statusErrorType = reflect.TypeOf(status.Error(codes.Unknown, ""))
 
-func ServerStart(ctx context.Context, info *grpc.UnaryServerInfo) (context.Context, error) {
+func ServerStart(ctx context.Context,
+	info *grpc.UnaryServerInfo,
+	verifyAPIKey func(ctx context.Context, md metadata.MD) bool,
+	authenticate func(ctx context.Context, md metadata.MD) types.UserID) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "failed reading request metadata")
 	}
 
-	if !headers.VerifyAPIKey(md, 10) {
-		logs.FromContext(ctx).Warn("invalid api key", md)
-		return nil, status.Error(codes.InvalidArgument, "failed verifying")
-	}
-
 	a := activity.New(info.FullMethod, md)
-	traceID := a.Get(headers.KeyTraceID)
+	ctx = activity.NewIncomingContext(ctx, a)
+	traceID := a.GetTraceID()
 	if traceID == "" {
 		traceID = base62.NewUUIDString()
-		a.Set(headers.KeyTraceID, traceID)
+		a.SetTraceID(traceID)
 	}
-	ctx = activity.NewIncomingContext(ctx, a)
 	logger := logs.FromContext(ctx).With(slog.String("trace_id", traceID))
+	ctx = logs.NewContext(ctx, logger)
 	fields := make([]any, 0, len(md)+1)
 	fields = append(fields, slog.String("full_method", info.FullMethod))
 	for k, v := range md {
@@ -53,7 +53,17 @@ func ServerStart(ctx context.Context, info *grpc.UnaryServerInfo) (context.Conte
 		fields = append(fields, slog.String(k, v[0]))
 	}
 	logger.Info("start", fields...)
-	ctx = logs.NewContext(ctx, logger)
+
+	if !verifyAPIKey(ctx, md) {
+		logger.Error("invalid api key", md)
+		return nil, status.Error(codes.InvalidArgument, "failed verifying")
+	}
+
+	uid := authenticate(ctx, md)
+	if uid != nil {
+		a.SetUserID(uid)
+		logger.Info("authenticated", slog.Any("uid", uid.Value()))
+	}
 	return ctx, nil
 }
 
@@ -78,7 +88,7 @@ func ServerFinish(resp any, err error, logger *slog.Logger, startAt time.Time) (
 	return nil, err
 }
 
-func SignClientContext(ctx context.Context) context.Context {
+func SignClientContext(ctx context.Context, createAPIKey func(md metadata.MD)) context.Context {
 	md, ok := metadata.FromOutgoingContext(ctx)
 	if !ok {
 		md = make(metadata.MD)
@@ -90,14 +100,14 @@ func SignClientContext(ctx context.Context) context.Context {
 	} else {
 		logs.FromContext(ctx).Warn("no outgoing context")
 	}
-	if traceID := headers.Get(md, headers.KeyTraceID); traceID == "" {
+	if traceID := headers.GetTraceID(md); traceID == "" {
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
 			logs.FromContext(ctx).Info("generated trace id " + traceID)
 		}
-		md.Set(headers.KeyTraceID, traceID)
+		headers.SetTraceID(md, traceID)
 	}
-	headers.SetAPIKey(md)
+	createAPIKey(md)
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
@@ -113,9 +123,9 @@ func WithClientCert(cert []byte) grpc.DialOption {
 	return grpc.WithTransportCredentials(credentials.NewTLS(config))
 }
 
-func WithClientSign() grpc.DialOption {
+func WithClientSign(createAPIKey func(md metadata.MD)) grpc.DialOption {
 	return grpc.WithUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		ctx = SignClientContext(ctx)
+		ctx = SignClientContext(ctx, createAPIKey)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	})
 }

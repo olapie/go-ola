@@ -52,7 +52,11 @@ type Authenticator[T types.UserIDTypes] interface {
 	Authenticate(req *http.Request) (T, error)
 }
 
-func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Duration, authenticator Authenticator[T]) http.Handler {
+func InterceptHandler(
+	next http.Handler,
+	timeout time.Duration,
+	verifyAPIKey func(ctx context.Context, header http.Header) bool,
+	authenticate func(ctx context.Context, header http.Header) types.UserID) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		startAt := time.Now()
 		a := activity.New("", req.Header)
@@ -73,7 +77,7 @@ func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Durati
 		}
 
 		logger.Info("start", fields...)
-		ctx = logs.NewCtx(ctx, logger)
+		ctx = logs.NewContext(ctx, logger)
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		req = req.WithContext(ctx)
@@ -87,20 +91,13 @@ func InterceptHandler[T ~int64 | ~string](next http.Handler, timeout time.Durati
 		}()
 
 		w := WrapWriter(rw)
-		if headers.VerifyAPIKey(req.Header, 10) {
-			if authenticator != nil {
-				authResult, err := authenticator.Authenticate(req)
-				if err != nil {
-					logger.Error("auth failed", slog.String("error", err.Error()))
-					Error(w, err)
-				} else {
-					logger.Info("auth succeeded", slog.Any("login", authResult))
-					a.SetUserID(types.NewUserID(authResult))
-					next.ServeHTTP(w, req)
-				}
-			} else {
-				next.ServeHTTP(w, req)
+
+		if verifyAPIKey(ctx, req.Header) {
+			if uid := authenticate(ctx, req.Header); uid != nil {
+				logger.Info("authenticated", slog.Any("uid", uid.Value()))
+				a.SetUserID(uid)
 			}
+			next.ServeHTTP(w, req)
 		} else {
 			Error(w, errorutil.NewError(http.StatusBadRequest, "invalid api key"))
 		}
