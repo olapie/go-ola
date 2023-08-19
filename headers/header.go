@@ -89,7 +89,7 @@ func Set[H HeaderTypes](h H, key, value string) {
 		hh := http.Header(m)
 		hh.Set(key, value)
 	case metadata.MD:
-		m.Set(strings.ToLower(key), value)
+		m.Set(key, value)
 	case http.Header:
 		m.Set(key, value)
 	default:

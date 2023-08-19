@@ -1,50 +1,56 @@
 package activity
 
 import (
-	"net/http"
-	"reflect"
-	"strings"
-	"sync"
-
+	"fmt"
 	"go.olapie.com/ola/headers"
 	internalTypes "go.olapie.com/ola/internal/types"
 	"go.olapie.com/ola/session"
 	"go.olapie.com/ola/types"
+	"google.golang.org/grpc/metadata"
+	"maps"
+	"net/http"
+	"net/textproto"
+	"strings"
 )
 
 const (
 	ErrNotExist internalTypes.ErrorString = "Activity does not exist"
 )
 
+type HeaderTypes interface {
+	http.Header | metadata.MD | map[string]string
+}
+
 type Activity struct {
 	name string
-	// header can be http.Header or grpc metadata.MD
-	header         map[string][]string
-	initHeaderOnce sync.Once
+	// http request
+	header http.Header
+
+	// grpc request
+	md metadata.MD
+
+	// aws lambda request
+	properties map[string]string
 
 	//Session is only available in incoming context, may be nil if session is not enabled
 	session *session.Session
 	userID  types.UserID
 }
 
-func New[T ~map[string][]string | ~map[string]string](name string, header T) *Activity {
+func New[H HeaderTypes](name string, header H) *Activity {
 	a := &Activity{
 		name: name,
 	}
 
-	if header != nil {
-		headerVal := reflect.ValueOf(header)
-		if headerVal.Type().Elem().Kind() != reflect.String {
-			a.header = headerVal.Convert(internalTypes.MapStringToStringSliceType).Interface().(map[string][]string)
-		} else {
-			m := headerVal.Convert(reflect.TypeOf(internalTypes.MapStringToStringType)).Interface().(map[string]string)
-			a.header = make(map[string][]string, len(m))
-			for k, v := range m {
-				a.header[k] = []string{v}
-			}
-		}
-	} else {
-		a.header = make(map[string][]string)
+	switch v := any(header).(type) {
+	case http.Header:
+		a.header = v
+	case metadata.MD:
+		a.md = v
+	case map[string]string:
+		a.properties = v
+	default:
+		panic(fmt.Sprintf("unsupported header type: %T", header))
 	}
 	return a
 }
@@ -66,31 +72,49 @@ func (a *Activity) SetUserID(id types.UserID) {
 }
 
 func (a *Activity) Set(key string, value string) {
-	if a.header == nil {
-		a.initHeaderOnce.Do(func() {
-			a.header = make(map[string][]string)
-		})
+	if a.header != nil {
+		a.header.Set(key, value)
+	} else if a.md != nil {
+		a.md.Set(key, value)
+	} else {
+		a.properties[key] = value
 	}
-	a.header[key] = []string{value}
 }
 
 func (a *Activity) Get(key string) string {
-	if a == nil || a.header == nil {
+	if a.header != nil {
+		return a.header.Get(key)
+	}
+
+	if a.md != nil {
+		l := a.md.Get(key)
+		if len(l) != 0 {
+			return l[0]
+		}
 		return ""
 	}
 
-	if l := a.header[key]; len(l) != 0 {
-		return l[0]
-	}
-
-	if l := a.header[strings.ToLower(key)]; len(l) != 0 {
-		return l[0]
-	}
-
-	if v := http.Header(a.header).Get(key); v != "" {
+	if v, ok := a.properties[key]; ok {
 		return v
 	}
+
+	if v, ok := a.properties[strings.ToLower(key)]; ok {
+		return v
+	}
+
+	if v, ok := a.properties[textproto.CanonicalMIMEHeaderKey(key)]; ok {
+		return v
+	}
+
 	return ""
+}
+
+func (a *Activity) GetAppID() string {
+	return a.Get(headers.KeyAppID)
+}
+
+func (a *Activity) SetAppID(id string) {
+	a.Set(headers.KeyAppID, id)
 }
 
 func (a *Activity) GetTraceID() string {
@@ -117,13 +141,43 @@ func (a *Activity) SetAuthorization(auth string) {
 	a.Set(headers.KeyAuthorization, auth)
 }
 
-// Header returns values for http.Header or metadata.MD
-// As http.Header and metadata.MD format header key in different ways, please copy values by http.Header.Set or metadata.MD.Set
-func (a *Activity) Header() map[string][]string {
-	if a.header == nil {
-		a.initHeaderOnce.Do(func() {
-			a.header = make(map[string][]string)
-		})
+func CopyHeader[H HeaderTypes](dest H, a *Activity) {
+	switch h := any(dest).(type) {
+	case http.Header:
+		if a.header != nil {
+			maps.Copy(h, a.header)
+		} else if a.md != nil {
+			maps.Copy(h, a.md)
+		} else {
+			for k, v := range a.properties {
+				h.Set(k, v)
+			}
+		}
+	case metadata.MD:
+		if a.header != nil {
+			maps.Copy(h, a.header)
+		} else if a.md != nil {
+			maps.Copy(h, a.md)
+		} else {
+			for k, v := range a.properties {
+				h.Set(k, v)
+			}
+		}
+	case map[string]string:
+		if a.header != nil {
+			for k, v := range a.header {
+				if len(v) != 0 {
+					h[k] = v[0]
+				}
+			}
+		} else if a.md != nil {
+			for k, v := range a.md {
+				if len(v) != 0 {
+					h[k] = v[0]
+				}
+			}
+		} else {
+			maps.Copy(h, a.properties)
+		}
 	}
-	return a.header
 }
