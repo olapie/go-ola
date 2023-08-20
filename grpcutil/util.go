@@ -128,6 +128,7 @@ func WithInsecure() grpc.DialOption {
 	return grpc.WithTransportCredentials(insecure.NewCredentials())
 }
 
+// WithSigner set trace id, api key and other properties in metadata
 func WithSigner(createAPIKey func(md metadata.MD)) grpc.DialOption {
 	return grpc.WithUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		ctx = signClientContext(ctx, createAPIKey)
