@@ -52,7 +52,7 @@ func ServerStart(ctx context.Context,
 		}
 		fields = append(fields, slog.String(k, v[0]))
 	}
-	logger.Info("start", fields...)
+	logger.Info("START", fields...)
 
 	if !verifyAPIKey(ctx, md) {
 		logger.Error("invalid api key", md)
@@ -69,21 +69,21 @@ func ServerStart(ctx context.Context,
 
 func ServerFinish(resp any, err error, logger *slog.Logger, startAt time.Time) (any, error) {
 	if err == nil {
-		logger.Info("finished", slog.Duration("cost", time.Now().Sub(startAt)))
+		logger.Info("END", slog.Duration("cost", time.Now().Sub(startAt)))
 		return resp, nil
 	}
 
-	logger.Error("failed", slog.String("error", err.Error()))
-
 	if reflect.TypeOf(err) == statusErrorType {
+		logger.Error("END", logs.Err(err))
 		return nil, err
 	}
 
 	if s := errorutil.GetCode(err); s >= 100 && s < 600 {
 		code := HTTPStatusToCode(s)
-		logger.Info("failed", slog.Int("status", s), slog.Int("code", int(code)))
+		logger.Info("END", slog.Int("status", s), slog.Int("code", int(code)), logs.Err(err))
 		return nil, status.Error(code, err.Error())
 	}
+	logger.Error("END", logs.Err(err))
 
 	return nil, err
 }

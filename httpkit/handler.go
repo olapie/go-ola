@@ -76,7 +76,7 @@ func InterceptHandler(
 			fields = append(fields, slog.String(key, req.Header.Get(key)))
 		}
 
-		logger.Info("start", fields...)
+		logger.Info("START", fields...)
 		ctx = logs.NewContext(ctx, logger)
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
@@ -107,9 +107,9 @@ func InterceptHandler(
 			slog.Duration("cost", time.Now().Sub(startAt))}
 		if status >= 400 {
 			fields = append(fields, slog.String("body", string(w.Body())))
-			logger.Info("failed", fields...)
+			logger.Error("END", fields...)
 		} else {
-			logger.Info("finished", fields...)
+			logger.Info("END", fields...)
 		}
 	})
 }
