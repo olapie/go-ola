@@ -3,6 +3,7 @@ package grpcutil
 import (
 	"context"
 	"crypto/tls"
+	"google.golang.org/grpc/credentials/insecure"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -111,7 +112,7 @@ func SignClientContext(ctx context.Context, createAPIKey func(md metadata.MD)) c
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
-func WithClientCert(cert []byte) grpc.DialOption {
+func WithSecure(cert []byte) grpc.DialOption {
 	config := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
@@ -123,7 +124,11 @@ func WithClientCert(cert []byte) grpc.DialOption {
 	return grpc.WithTransportCredentials(credentials.NewTLS(config))
 }
 
-func WithClientSign(createAPIKey func(md metadata.MD)) grpc.DialOption {
+func WithInsecure() grpc.DialOption {
+	return grpc.WithTransportCredentials(insecure.NewCredentials())
+}
+
+func WithAPIKey(createAPIKey func(md metadata.MD)) grpc.DialOption {
 	return grpc.WithUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		ctx = SignClientContext(ctx, createAPIKey)
 		return invoker(ctx, method, req, reply, cc, opts...)
