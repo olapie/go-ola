@@ -89,7 +89,7 @@ func ServerFinish(resp any, err error, logger *slog.Logger, startAt time.Time) (
 	return nil, err
 }
 
-func SignClientContext(ctx context.Context, createAPIKey func(md metadata.MD)) context.Context {
+func signClientContext(ctx context.Context, createAPIKey func(md metadata.MD)) context.Context {
 	md, ok := metadata.FromOutgoingContext(ctx)
 	if !ok {
 		md = make(metadata.MD)
@@ -128,9 +128,9 @@ func WithInsecure() grpc.DialOption {
 	return grpc.WithTransportCredentials(insecure.NewCredentials())
 }
 
-func WithAPIKey(createAPIKey func(md metadata.MD)) grpc.DialOption {
+func WithSigner(createAPIKey func(md metadata.MD)) grpc.DialOption {
 	return grpc.WithUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		ctx = SignClientContext(ctx, createAPIKey)
+		ctx = signClientContext(ctx, createAPIKey)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	})
 }
