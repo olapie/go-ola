@@ -52,8 +52,8 @@ type Authenticator[T types.UserIDTypes] interface {
 	Authenticate(req *http.Request) (T, error)
 }
 
-func InterceptHandler(
-	next http.Handler,
+func NewStartHandler(
+	maybeNext http.Handler,
 	timeout time.Duration,
 	verifyAPIKey func(ctx context.Context, header http.Header) bool,
 	authenticate func(ctx context.Context, header http.Header) types.UserID) http.Handler {
@@ -97,7 +97,7 @@ func InterceptHandler(
 				logger.Info("authenticated", slog.Any("uid", uid.Value()))
 				a.SetUserID(uid)
 			}
-			next.ServeHTTP(w, req)
+			maybeNext.ServeHTTP(w, req)
 		} else {
 			Error(w, errorutil.NewError(http.StatusBadRequest, "invalid api key"))
 		}
