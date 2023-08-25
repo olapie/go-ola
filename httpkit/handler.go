@@ -54,7 +54,6 @@ type Authenticator[T types.UserIDTypes] interface {
 
 func NewStartHandler(
 	maybeNext http.Handler,
-	timeout time.Duration,
 	verifyAPIKey func(ctx context.Context, header http.Header) bool,
 	authenticate func(ctx context.Context, header http.Header) types.UserID) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -78,8 +77,11 @@ func NewStartHandler(
 
 		logger.Info("START", fields...)
 		ctx = logs.NewContext(ctx, logger)
-		ctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
+		var cancel context.CancelFunc
+		if seconds := a.GetRequestTimeout(); seconds > 0 {
+			ctx, cancel = context.WithTimeout(ctx, time.Duration(seconds)*time.Second)
+			defer cancel()
+		}
 		req = req.WithContext(ctx)
 
 		defer func() {

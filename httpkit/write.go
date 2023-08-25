@@ -2,12 +2,13 @@ package httpkit
 
 import (
 	"encoding/json"
-	"go.olapie.com/ola/mimetypes"
 	"io"
 	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"go.olapie.com/ola/mimetypes"
 
 	"go.olapie.com/ola/headers"
 

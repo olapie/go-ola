@@ -2,15 +2,18 @@ package activity
 
 import (
 	"fmt"
+	"log/slog"
+	"maps"
+	"net/http"
+	"net/textproto"
+	"strconv"
+	"strings"
+
 	"go.olapie.com/ola/headers"
 	internalTypes "go.olapie.com/ola/internal/types"
 	"go.olapie.com/ola/session"
 	"go.olapie.com/ola/types"
 	"google.golang.org/grpc/metadata"
-	"maps"
-	"net/http"
-	"net/textproto"
-	"strings"
 )
 
 const (
@@ -143,6 +146,25 @@ func (a *Activity) GetAuthorization() string {
 
 func (a *Activity) SetAuthorization(auth string) {
 	a.Set(headers.KeyAuthorization, auth)
+}
+
+func (a *Activity) GetRequestTimeout() int {
+	s := a.Get(headers.KeyRequestTimeout)
+	if s == "" {
+		return 0
+	}
+	t, err := strconv.Atoi(s)
+	if err != nil || t < 0 {
+		slog.Error("invalid Request-Timeout: " + s)
+		return 0
+	}
+	return t
+}
+
+func (a *Activity) SetRequestTimeout(seconds int) {
+	if seconds > 0 {
+		a.Set(headers.KeyRequestTimeout, strconv.Itoa(seconds))
+	}
 }
 
 func CopyHeader[H HeaderTypes](dest H, a *Activity) {

@@ -1,11 +1,12 @@
 package httpkit
 
 import (
+	"net/http"
+
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/headers"
 	"go.olapie.com/security/base62"
-	"net/http"
 )
 
 func SignRequest(req *http.Request, createAPIKey func(h http.Header)) {

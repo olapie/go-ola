@@ -7,13 +7,14 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"go.olapie.com/ola/mimetypes"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"reflect"
 	"sync"
+
+	"go.olapie.com/ola/mimetypes"
 
 	"go.olapie.com/ola/headers"
 	"go.olapie.com/security/base62"

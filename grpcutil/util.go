@@ -3,12 +3,13 @@ package grpcutil
 import (
 	"context"
 	"crypto/tls"
-	"google.golang.org/grpc/credentials/insecure"
 	"log/slog"
 	"net/http"
 	"reflect"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc/credentials/insecure"
 
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"

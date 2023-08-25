@@ -3,12 +3,15 @@ package headers
 import (
 	"encoding/base64"
 	"fmt"
-	"go.olapie.com/ola/internal/types"
-	"google.golang.org/grpc/metadata"
+	"log/slog"
 	"mime"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
+
+	"go.olapie.com/ola/internal/types"
+	"google.golang.org/grpc/metadata"
 )
 
 // http.Client will convert x-app-id to X-App-Id by default
@@ -28,6 +31,7 @@ const (
 	KeyLocation            = "Location"
 	KeyReferrer            = "Referer"
 	KeyReferrerPolicy      = "Referrer-Policy"
+	KeyRequestTimeout      = "Request-Timeout"
 	KeyUserAgent           = "User-Agent"
 	KeyWWWAuthenticate     = "WWW-Authenticate"
 	KeyAcceptLanguage      = "Accept-Language"
@@ -221,6 +225,25 @@ func GetAppID[H HeaderTypes](h H) string {
 
 func SetAppID[H HeaderTypes](h H, id string) {
 	Set(h, KeyAppID, id)
+}
+
+func GetRequestTimeout[H HeaderTypes](h H) int {
+	s := Get(h, KeyRequestTimeout)
+	if s == "" {
+		return 0
+	}
+	t, err := strconv.Atoi(s)
+	if err != nil || t < 0 {
+		slog.Error("invalid Request-Timeout: " + s)
+		return 0
+	}
+	return t
+}
+
+func SetRequestTimeout[H HeaderTypes](h H, seconds int) {
+	if seconds > 0 {
+		Set(h, KeyRequestTimeout, strconv.Itoa(seconds))
+	}
 }
 
 /**
