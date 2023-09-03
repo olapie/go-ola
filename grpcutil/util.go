@@ -60,7 +60,7 @@ func ServerStart(ctx context.Context,
 		attrs := make([]slog.Attr, 0, len(md))
 		for key, val := range md {
 			if len(val) > 0 {
-				attrs = append(attrs, slog.String(key, val))
+				attrs = append(attrs, slog.String(key, val[0]))
 			}
 		}
 		logger.Error("invalid api key", md)
