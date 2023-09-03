@@ -34,7 +34,7 @@ func ServerStart(ctx context.Context,
 	authenticate func(ctx context.Context, md metadata.MD) types.UserID) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.InvalidArgument, "failed reading request metadata")
+		return ctx, status.Error(codes.InvalidArgument, "failed reading request metadata")
 	}
 
 	a := activity.New(info.FullMethod, md)
@@ -57,8 +57,14 @@ func ServerStart(ctx context.Context,
 	logger.Info("START", fields...)
 
 	if !verifyAPIKey(ctx, md) {
+		attrs := make([]slog.Attr, 0, len(md))
+		for key, val := range md {
+			if len(val) > 0 {
+				attrs = append(attrs, slog.String(key, val))
+			}
+		}
 		logger.Error("invalid api key", md)
-		return nil, status.Error(codes.InvalidArgument, "failed verifying")
+		return ctx, status.Error(codes.InvalidArgument, "failed verifying")
 	}
 
 	uid := authenticate(ctx, md)
