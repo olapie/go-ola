@@ -17,6 +17,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var metadataKeysForLogging = []string{"x-client-id", "x-app-id"}
+
 func ServerStart(ctx context.Context,
 	info *grpc.UnaryServerInfo,
 	verifyAPIKey func(ctx context.Context, md metadata.MD) bool,
@@ -33,15 +35,15 @@ func ServerStart(ctx context.Context,
 		traceID = base62.NewUUIDString()
 		a.SetTraceID(traceID)
 	}
-	logger := logs.FromContext(ctx).With(slog.String("trace_id", traceID))
+	logger := logs.FromContext(ctx).With(slog.String("traceId", traceID))
 	ctx = logs.NewContext(ctx, logger)
 	fields := make([]any, 0, len(md)+1)
-	fields = append(fields, slog.String("full_method", info.FullMethod))
-	for k, v := range md {
-		if len(v) == 0 {
-			continue
+	fields = append(fields, slog.String("method", info.FullMethod))
+
+	for _, mdKey := range metadataKeysForLogging {
+		if mdVal, _ := md[mdKey]; len(mdVal) > 0 && mdVal[0] != "" {
+			fields = append(fields, slog.String(mdKey, mdVal[0]))
 		}
-		fields = append(fields, slog.String(k, v[0]))
 	}
 	logger.Info("START", fields...)
 

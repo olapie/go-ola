@@ -64,13 +64,13 @@ func NewStartHandler(
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
 		}
-		logger := logs.FromContext(ctx).With(slog.String("trace_id", traceID))
+		logger := logs.FromContext(ctx).With(slog.String("traceId", traceID))
 		fields := make([]any, 0, 4+len(req.Header))
 		fields = append(fields,
 			slog.String("uri", req.RequestURI),
 			slog.String("method", req.Method),
 			slog.String("host", req.Host),
-			slog.String("remote_addr", req.RemoteAddr))
+			slog.String("remoteAddr", req.RemoteAddr))
 		for key := range req.Header {
 			fields = append(fields, slog.String(key, req.Header.Get(key)))
 		}
