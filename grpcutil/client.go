@@ -94,7 +94,7 @@ func Retry[IN proto.Message, OUT proto.Message](ctx context.Context, retries int
 	var err error
 	for i := 0; i < retries; i++ {
 		if i > 0 {
-			logs.FromContext(ctx).Info("retry", slog.Int("attempts", i+1))
+			logs.FromContext(ctx).Info("retry", slog.Int("attempts", i))
 		}
 		out, err = call(ctx, in, options...)
 		if err == nil {
