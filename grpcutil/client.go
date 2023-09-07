@@ -107,7 +107,15 @@ func Retry[IN proto.Message, OUT proto.Message](ctx context.Context, retries int
 
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
-			case codes.InvalidArgument, codes.Unimplemented, codes.PermissionDenied, codes.Unauthenticated, codes.Internal, codes.AlreadyExists, codes.NotFound:
+			// unrecoverable error codes, return immediately
+			case codes.InvalidArgument,
+			codes.Unimplemented,
+			codes.PermissionDenied,
+			codes.Unauthenticated,
+			codes.Internal,
+			codes.AlreadyExists,
+			codes.NotFound,
+			codes.DeadlineExceeded:
 				return out, err
 			}
 		}
