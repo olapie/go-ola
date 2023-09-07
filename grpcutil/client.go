@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/golang/protobuf/proto"
 	"time"
 
 	"go.olapie.com/logs"
@@ -83,4 +84,17 @@ func signClientContext(ctx context.Context, createAPIKey func(md metadata.MD)) c
 	}
 	createAPIKey(md)
 	return metadata.NewOutgoingContext(ctx, md)
+}
+
+func Retry[IN proto.Message, OUT proto.Message](ctx context.Context, retries int, backoff time.Duration, call func(ctx context.Context, in IN, options ...grpc.CallOption) (OUT, error), in IN, options ...grpc.CallOption) (OUT, error) {
+	var out OUT
+	var err error
+	for i := 0; i < retries; i++ {
+		out, err = call(ctx, in, options...)
+		if err == nil {
+			break
+		}
+		time.Sleep(backoff)
+	}
+	return out, err
 }
