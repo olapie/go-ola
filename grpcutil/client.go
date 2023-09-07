@@ -4,9 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"log/slog"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/headers"
@@ -90,9 +93,23 @@ func Retry[IN proto.Message, OUT proto.Message](ctx context.Context, retries int
 	var out OUT
 	var err error
 	for i := 0; i < retries; i++ {
+		if i > 0 {
+			logs.FromContext(ctx).Info("retry", slog.Int("attempts", i+1))
+		}
 		out, err = call(ctx, in, options...)
 		if err == nil {
-			break
+			return out, err
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+			return out, err
+		}
+
+		if s, ok := status.FromError(err); ok {
+			switch s.Code() {
+			case codes.InvalidArgument, codes.Unimplemented, codes.PermissionDenied, codes.Unauthenticated, codes.Internal, codes.AlreadyExists, codes.NotFound:
+				return out, err
+			}
 		}
 		time.Sleep(backoff)
 	}
