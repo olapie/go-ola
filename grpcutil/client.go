@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"log/slog"
 	"time"
 
@@ -15,14 +13,16 @@ import (
 	"go.olapie.com/ola/headers"
 	"go.olapie.com/security/base62"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func DialTLS(ctx context.Context, server string, options ...grpc.DialOption) (cc *grpc.ClientConn, err error) {
 	options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
-	return dial(ctx, server, options...)
+	return grpc.DialContext(ctx, server, options...)
 }
 
 func DialWithClientCert(ctx context.Context, server string, cert []byte, options ...grpc.DialOption) (cc *grpc.ClientConn, err error) {
@@ -35,12 +35,12 @@ func DialWithClientCert(ctx context.Context, server string, cert []byte, options
 		ClientAuth: tls.RequireAndVerifyClientCert,
 	}
 	options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(config)))
-	return dial(ctx, server, options...)
+	return grpc.DialContext(ctx, server, options...)
 }
 
 func Dial(ctx context.Context, server string, options ...grpc.DialOption) (cc *grpc.ClientConn, err error) {
 	options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	return dial(ctx, server, options...)
+	return grpc.DialContext(ctx, server, options...)
 }
 
 // WithSigner set trace id, api key and other properties in metadata
@@ -49,21 +49,6 @@ func WithSigner(createAPIKey func(md metadata.MD)) grpc.DialOption {
 		ctx = signClientContext(ctx, createAPIKey)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	})
-}
-
-func dial(ctx context.Context, server string, options ...grpc.DialOption) (cc *grpc.ClientConn, err error) {
-	for i := 0; i < 3; i++ {
-		cc, err = grpc.DialContext(ctx, server, options...)
-		if err == nil {
-			return cc, nil
-		}
-
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return nil, err
-		}
-		time.Sleep(time.Second)
-	}
-	return nil, err
 }
 
 func signClientContext(ctx context.Context, createAPIKey func(md metadata.MD)) context.Context {
@@ -109,13 +94,13 @@ func Retry[IN proto.Message, OUT proto.Message](ctx context.Context, retries int
 			switch s.Code() {
 			// unrecoverable error codes, return immediately
 			case codes.InvalidArgument,
-			codes.Unimplemented,
-			codes.PermissionDenied,
-			codes.Unauthenticated,
-			codes.Internal,
-			codes.AlreadyExists,
-			codes.NotFound,
-			codes.DeadlineExceeded:
+				codes.Unimplemented,
+				codes.PermissionDenied,
+				codes.Unauthenticated,
+				codes.Internal,
+				codes.AlreadyExists,
+				codes.NotFound,
+				codes.DeadlineExceeded:
 				return out, err
 			}
 		}
