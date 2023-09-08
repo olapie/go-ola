@@ -2,6 +2,7 @@ package errorutil
 
 import (
 	"fmt"
+	"google.golang.org/grpc/status"
 	"net/http"
 	"reflect"
 
@@ -204,6 +205,9 @@ func Cause(err error) error {
 }
 
 func GetCode(err error) int {
+	if st, ok := status.FromError(err); ok {
+		return int(st.Code())
+	}
 	err = Cause(err)
 	if err == nil {
 		return 0
