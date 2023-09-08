@@ -3,11 +3,7 @@ package grpcutil
 import (
 	"context"
 	"crypto/tls"
-	"errors"
-	"log/slog"
-	"time"
 
-	"github.com/golang/protobuf/proto"
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/headers"
@@ -74,37 +70,9 @@ func signClientContext(ctx context.Context, createAPIKey func(md metadata.MD)) c
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
-func Retry[IN proto.Message, OUT proto.Message](ctx context.Context, retries int, backoff time.Duration, call func(ctx context.Context, in IN, options ...grpc.CallOption) (OUT, error), in IN, options ...grpc.CallOption) (OUT, error) {
-	var out OUT
-	var err error
-	for i := 0; i < retries; i++ {
-		if i > 0 {
-			logs.FromContext(ctx).Info("retry", slog.Int("attempts", i))
-		}
-		out, err = call(ctx, in, options...)
-		if err == nil {
-			return out, err
-		}
-
-		if errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
-			return out, err
-		}
-
-		if s, ok := status.FromError(err); ok {
-			switch s.Code() {
-			// unrecoverable error codes, return immediately
-			case codes.InvalidArgument,
-				codes.Unimplemented,
-				codes.PermissionDenied,
-				codes.Unauthenticated,
-				codes.Internal,
-				codes.AlreadyExists,
-				codes.NotFound,
-				codes.DeadlineExceeded:
-				return out, err
-			}
-		}
-		time.Sleep(backoff)
+func GetErrorCode(err error) codes.Code {
+	if s, ok := status.FromError(err); ok {
+		return s.Code()
 	}
-	return out, err
+	return codes.Unknown
 }
