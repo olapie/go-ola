@@ -55,7 +55,7 @@ type Authenticator[T types.UserIDTypes] interface {
 func NewStartHandler(
 	maybeNext http.Handler,
 	verifyAPIKey func(ctx context.Context, header http.Header) bool,
-	authenticate func(ctx context.Context, header http.Header) types.UserID) http.Handler {
+	authenticate func(ctx context.Context, header http.Header) *types.Auth) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		startAt := time.Now()
 		a := activity.New("", req.Header)
@@ -95,9 +95,11 @@ func NewStartHandler(
 		w := WrapWriter(rw)
 
 		if verifyAPIKey(ctx, req.Header) {
-			if uid := authenticate(ctx, req.Header); uid != nil {
-				logger.Info("authenticated", slog.Any("uid", uid.Value()))
-				a.SetUserID(uid)
+			auth := authenticate(ctx, req.Header)
+			if auth != nil {
+				a.SetUserID(auth.UserID)
+				a.SetAuthAppID(auth.AppID)
+				logger.Info("authenticated", slog.Any("uid", auth.UserID.Value()), slog.String("authAppId", auth.AppID))
 			}
 			maybeNext.ServeHTTP(w, req)
 		} else {

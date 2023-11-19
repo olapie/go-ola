@@ -2,9 +2,10 @@ package errorutil
 
 import (
 	"fmt"
-	"google.golang.org/grpc/status"
 	"net/http"
 	"reflect"
+
+	"google.golang.org/grpc/status"
 
 	"go.olapie.com/ola/internal/types"
 	"go.olapie.com/utils"

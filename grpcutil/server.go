@@ -22,7 +22,7 @@ var metadataKeysForLogging = []string{"x-client-id", "x-app-id"}
 func ServerStart(ctx context.Context,
 	info *grpc.UnaryServerInfo,
 	verifyAPIKey func(ctx context.Context, md metadata.MD) bool,
-	authenticate func(ctx context.Context, md metadata.MD) types.UserID) (context.Context, error) {
+	authenticate func(ctx context.Context, md metadata.MD) *types.Auth) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return ctx, status.Error(codes.InvalidArgument, "failed reading request metadata")
@@ -58,10 +58,11 @@ func ServerStart(ctx context.Context,
 		return ctx, status.Error(codes.InvalidArgument, "failed verifying")
 	}
 
-	uid := authenticate(ctx, md)
-	if uid != nil {
-		a.SetUserID(uid)
-		logger.Info("authenticated", slog.Any("uid", uid.Value()))
+	auth := authenticate(ctx, md)
+	if auth != nil {
+		a.SetUserID(auth.UserID)
+		a.SetAuthAppID(auth.AppID)
+		logger.Info("authenticated", slog.Any("uid", auth.UserID.Value()), slog.String("authAppId", auth.AppID))
 	}
 	return ctx, nil
 }
