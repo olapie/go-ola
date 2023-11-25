@@ -3,7 +3,6 @@ package activity
 import (
 	"context"
 	"log/slog"
-	"math"
 	"reflect"
 
 	"go.olapie.com/ola/types"
@@ -65,13 +64,15 @@ func GetIncomingUserID[T types.UserIDTypes](ctx context.Context) T {
 	return id
 }
 
+var systemUserID = types.NewUserID[string]("ola-system-user-id")
+
 func SetSystemUser(ctx context.Context) {
 	a := FromIncomingContext(ctx)
 	if a == nil {
 		a = new(Activity)
 		NewIncomingContext(ctx, a)
 	}
-	a.userID = types.NewUserID[int64](math.MaxInt64)
+	a.userID = systemUserID
 }
 
 func IsSystemUser(ctx context.Context) bool {
@@ -79,9 +80,5 @@ func IsSystemUser(ctx context.Context) bool {
 	if a == nil {
 		return false
 	}
-	id, ok := a.userID.Int()
-	if !ok {
-		return false
-	}
-	return id == math.MaxInt64
+	return a.userID == systemUserID
 }
