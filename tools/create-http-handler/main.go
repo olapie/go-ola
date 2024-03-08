@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
+	"go.olapie.com/naming"
 	"log"
 	"os"
 	"strings"
-
-	"go.olapie.com/utils"
 )
 
 func main() {
@@ -41,7 +40,7 @@ func (h *{{.HandlerName}}) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		} else {
 			handlerName = name + "Handler"
 		}
-		fileName := utils.ToSnake(name) + ".go"
+		fileName := naming.ToSnake(name) + ".go"
 		code := strings.ReplaceAll(codeTemplate, "{{.HandlerName}}", handlerName)
 		err := os.WriteFile(fileName, []byte(code), 0644)
 		if err != nil {

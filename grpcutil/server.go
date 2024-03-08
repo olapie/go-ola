@@ -54,7 +54,7 @@ func ServerStart(ctx context.Context,
 				attrs = append(attrs, slog.String(key, val[0]))
 			}
 		}
-		logger.Error("invalid api key", md)
+		logger.Error("invalid api key", slog.Any("metadata", md))
 		return ctx, status.Error(codes.InvalidArgument, "failed verifying")
 	}
 

@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"go.olapie.com/conv"
 	"io"
 	"log"
 	"net/http"
@@ -318,7 +319,7 @@ func GetResponseResult[T any](resp *http.Response) (T, error) {
 	} else if _, ok := any(res).([]byte); ok {
 		res = any(body).(T)
 	} else {
-		if err = utils.SetBytes(&res, body); err != nil {
+		if err = conv.UnsafeUnmarshal(body, &res); err != nil {
 			err = fmt.Errorf("cannot handle %s: %w ", ct, err)
 		}
 	}
