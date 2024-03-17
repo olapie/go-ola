@@ -75,8 +75,9 @@ func NewStartHandler(
 			fields = append(fields, slog.String(key, req.Header.Get(key)))
 		}
 
-		logger.Info("START", fields...)
 		ctx = logs.NewContext(ctx, logger)
+		logger = logger.With("module", "httpkit")
+		logger.Info("START", fields...)
 		var cancel context.CancelFunc
 		if seconds := a.GetRequestTimeout(); seconds > 0 {
 			ctx, cancel = context.WithTimeout(ctx, time.Duration(seconds)*time.Second)

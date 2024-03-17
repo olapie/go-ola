@@ -35,8 +35,9 @@ func ServerStart(ctx context.Context,
 		traceID = base62.NewUUIDString()
 		a.SetTraceID(traceID)
 	}
-	logger := logs.FromContext(ctx).With(slog.String("traceId", traceID)).With("module", "grpcutil")
+	logger := logs.FromContext(ctx).With(slog.String("traceId", traceID))
 	ctx = logs.NewContext(ctx, logger)
+	logger = logger.With("module", "grpcutil")
 	fields := make([]any, 0, len(md)+1)
 	fields = append(fields, slog.String("method", info.FullMethod))
 
