@@ -64,7 +64,9 @@ func NewStartHandler(
 		if traceID == "" {
 			traceID = base62.NewUUIDString()
 		}
+
 		logger := logs.FromContext(ctx).With(slog.String("traceId", traceID))
+
 		fields := make([]any, 0, 4+len(req.Header))
 		fields = append(fields,
 			slog.String("uri", req.RequestURI),
@@ -83,38 +85,49 @@ func NewStartHandler(
 			ctx, cancel = context.WithTimeout(ctx, time.Duration(seconds)*time.Second)
 			defer cancel()
 		}
+
 		req = req.WithContext(ctx)
+		w := WrapWriter(rw)
 
 		defer func() {
 			if p := recover(); p != nil {
-				slog.Error("panic", "error", p)
+				logger.Error("panic", "error", p)
 				rw.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+
+			status := w.Status()
+			fields = []any{slog.Int("status", status),
+				slog.Duration("cost", time.Now().Sub(startAt))}
+			if status >= 400 {
+				fields = append(fields, slog.String("body", string(w.Body())))
+				logger.Error("END", fields...)
+			} else {
+				logger.Info("END", fields...)
+			}
 		}()
 
-		w := WrapWriter(rw)
+		appID := a.GetAppID()
+		if appID == "" {
+			Error(w, errorutil.NewError(http.StatusBadRequest, "client appId does not match authenticated appId"))
+			return
+		}
 
 		if verifyAPIKey(ctx, req.Header) {
 			auth := authenticate(ctx, req.Header)
 			if auth != nil {
-				a.SetUserID(auth.UserID)
-				a.SetAuthAppID(auth.AppID)
-				logger.Info("authenticated", slog.Any("uid", auth.UserID.Value()), slog.String("authAppId", auth.AppID))
+				if auth.AppID != appID {
+					Error(w, errorutil.NewError(http.StatusUnauthorized, "client appId does not match authenticated appId"))
+					return
+				} else {
+					a.SetUserID(auth.UserID)
+					logger.Info("authenticated", slog.Any("uid", auth.UserID.Value()), slog.String("appId", auth.AppID))
+				}
 			}
 			maybeNext.ServeHTTP(w, req)
 		} else {
 			Error(w, errorutil.NewError(http.StatusBadRequest, "invalid api key"))
-		}
-
-		status := w.Status()
-		fields = []any{slog.Int("status", status),
-			slog.Duration("cost", time.Now().Sub(startAt))}
-		if status >= 400 {
-			fields = append(fields, slog.String("body", string(w.Body())))
-			logger.Error("END", fields...)
-		} else {
-			logger.Info("END", fields...)
+			return
 		}
 	})
 }

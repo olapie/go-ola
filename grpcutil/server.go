@@ -2,6 +2,7 @@ package grpcutil
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"reflect"
 	"time"
@@ -29,6 +30,11 @@ func ServerStart(ctx context.Context,
 	}
 
 	a := activity.New(info.FullMethod, md)
+	appID := a.GetAppID()
+	if appID == "" {
+		return ctx, status.Error(codes.InvalidArgument, "missing x-app-id")
+	}
+
 	ctx = activity.NewIncomingContext(ctx, a)
 	traceID := a.GetTraceID()
 	if traceID == "" {
@@ -61,9 +67,12 @@ func ServerStart(ctx context.Context,
 
 	auth := authenticate(ctx, md)
 	if auth != nil {
+		if auth.AppID != appID {
+			logger.ErrorContext(ctx, fmt.Sprintf("client appId %s does not match authenticated appId %s", appID, auth.AppID))
+			return ctx, status.Error(codes.Unauthenticated, "client appId does not match authenticated appId")
+		}
 		a.SetUserID(auth.UserID)
-		a.SetAuthAppID(auth.AppID)
-		logger.Info("authenticated", slog.Any("uid", auth.UserID.Value()), slog.String("authAppId", auth.AppID))
+		logger.Info("authenticated", slog.Any("uid", auth.UserID.Value()), slog.String("appId", auth.AppID))
 	}
 	return ctx, nil
 }

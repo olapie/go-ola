@@ -36,9 +36,8 @@ type Activity struct {
 	properties map[string]string
 
 	//Session is only available in incoming context, may be nil if session is not enabled
-	session   *session.Session
-	userID    types.UserID
-	authAppID string
+	session *session.Session
+	userID  types.UserID
 }
 
 func New[H HeaderTypes](name string, header H) *Activity {
@@ -115,14 +114,6 @@ func (a *Activity) Get(key string) string {
 	}
 
 	return ""
-}
-
-func (a *Activity) GetAuthAppID() string {
-	return a.authAppID
-}
-
-func (a *Activity) SetAuthAppID(id string) {
-	a.authAppID = id
 }
 
 func (a *Activity) GetAppID() string {
