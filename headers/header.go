@@ -45,6 +45,34 @@ const (
 )
 
 const (
+	LowerKeyAuthorization       = "authorization"
+	LowerKeyAcceptEncoding      = "accept-encoding"
+	LowerKeyACLAllowCredentials = "access-control-allow-credentials"
+	LowerKeyACLAllowHeaders     = "access-control-allow-headers"
+	LowerKeyACLAllowMethods     = "access-control-allow-methods"
+	LowerKeyACLAllowOrigin      = "access-control-allow-origin"
+	LowerKeyACLExposeHeaders    = "access-control-expose-headers"
+	LowerKeyContentType         = "content-type"
+	LowerKeyContentDisposition  = "content-disposition"
+	LowerKeyContentEncoding     = "content-encoding"
+	LowerKeyCookies             = "cookies"
+	LowerKeyLocation            = "location"
+	LowerKeyReferrer            = "referer"
+	LowerKeyReferrerPolicy      = "referrer-policy"
+	LowerKeyRequestTimeout      = "request-timeout"
+	LowerKeyUserAgent           = "user-agent"
+	LowerKeyWWWAuthenticate     = "www-authenticate"
+	LowerKeyAcceptLanguage      = "accept-language"
+	LowerKeyETag                = "etag"
+
+	LowerKeyClientID  = "x-client-id"
+	LowerKeyAppID     = "x-app-id"
+	LowerKeyTraceID   = "x-trace-id"
+	LowerKeyAPIKey    = "x-api-key"
+	LowerKeyServiceID = "x-service-id"
+)
+
+const (
 	Bearer = "Bearer"
 	Basic  = "Basic"
 )

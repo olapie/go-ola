@@ -73,7 +73,7 @@ func HTTPStatusToCode(s int) codes.Code {
 func MatchMetadata(key string) (string, bool) {
 	key = strings.ToLower(key)
 	switch key {
-	case headers.KeyClientID, headers.KeyAppID, headers.KeyTraceID, headers.KeyAPIKey:
+	case headers.LowerKeyClientID, headers.LowerKeyAppID, headers.LowerKeyTraceID, headers.LowerKeyAPIKey, headers.LowerKeyUserAgent, headers.LowerKeyAuthorization, headers.LowerKeyLocation:
 		return key, true
 	default:
 		return "", false
